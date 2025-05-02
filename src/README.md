@@ -4,14 +4,16 @@
 To implement an efficient Genetic Programming (GP) algorithm for symbolic regression, focusing on discovering mathematical expressions that approximate underlying functions based on observed data points.
 
 ### Activities Performed
+
 - Designed and implemented a complete tree-based Genetic Programming framework
 - Created an expression representation system with function and terminal nodes
-- Created protected mathematical functions to handle edge cases
-- Developed specialized genetic operators for tree-based evolution
-- Designed advanced diversity maintenance through an island model
-- Implemented semantic fitness sharing to promote diverse solutions
-- Created techniques for bloat control and expression simplification
-- Tested the algorithm on multiple problem instances with different complexities
+- Developed advanced genetic operators (crossover, mutation, selection)
+- Implemented an island model for maintaining population diversity
+- Added adaptive mutation rates to balance exploration and exploitation
+- Incorporated symbolic simplification of expressions
+- Built a bloat control mechanism to prevent excessive expression growth
+- Tested the system on nine different regression problems of varying complexity
+
 
 ### Problem Definition
 Symbolic regression involves finding a mathematical expression that best fits a given dataset of input-output pairs, without assuming a specific model structure. Formally:
