@@ -1,4 +1,4 @@
-# Computational Intelligence Laboratory Report
+# Computational Intelligence Report
 
 ## Laboratory 1: Set Cover Problem
 
@@ -350,8 +350,6 @@ In reality, the Improved RHCM v2 is not a significant improvement over the basic
 
 
 ## Laboratory 2: Traveling Salesman Problem
-
-**Date:** November 2024
 
 **Objective:**  
 To develop an efficient evolutionary algorithm for solving the Traveling Salesman Problem (TSP) with various datasets representing different countries, focusing on achieving high-quality routes while balancing exploration and exploitation.
@@ -718,7 +716,6 @@ In the README, it would have been helpful to include a summary of results for ea
 
 ## Laboratory 3: N-Puzzle Solver
 
-**Date:** November 2024
 
 **Objective:**  
 To implement an efficient A* search algorithm for solving the N-puzzle problem, focusing on developing advanced heuristics to improve search efficiency.
