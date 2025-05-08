@@ -20,6 +20,75 @@ Symbolic regression involves finding a mathematical expression that best fits a 
 - Given a dataset of observations (X, y)
 - Find a symbolic expression f such that f(X) approximates y as closely as possible
 
+### Summary of the main points behind the algorithm
+
+#### Individual Representation
+
+The solutions are represented as expression trees. Each tree consists of two primary node types: function nodes and terminal nodes. Function nodes represent mathematical operations such as addition, multiplication, division, trigonometric functions, and logarithms. These function nodes have a specific arity (number of arguments) and operate on their child nodes. Terminal nodes represent either variables (inputs from the dataset) or constants, serving as the leaves of the tree.
+
+This representation creates a direct mapping between the tree structure and mathematical expressions.
+
+Tree initialization employs a technique called "ramped half-and-half," which combines two tree-generation methods. The "full" method creates trees with all leaf nodes at the same depth, while the "grow" method allows for more varied structures where some branches may terminate earlier than others. By combining these approaches and randomizing depths within a predefined range, the initialization produces a structurally diverse population—a critical factor for effective exploration of the solution space.
+
+#### Semantic Fitness Sharing
+
+Traditional fitness evaluation in genetic programming often leads to premature convergence on structurally similar solutions. Semantic fitness sharing addresses this limitation by considering the behavioral characteristics of solutions rather than merely their structural differences.
+
+The semantic distance between two expressions is calculated by evaluating them on a representative sample of data points and measuring the difference between their output patterns. Mathematically, this distance is computed as the mean squared error between the normalized outputs:
+
+```
+semantic_distance(tree1, tree2) = mean((normalized_output1 - normalized_output2)²)
+```
+
+Fitness sharing penalizes individuals that behave similarly to others in the population. For each individual, a sharing factor is calculated based on how many other expressions produce similar outputs and how close these outputs are. This factor increases as more semantically similar neighbors are found within a specified radius (σ).
+
+The adjusted fitness is then calculated by multiplying the original fitness by this sharing factor:
+
+```
+adjusted_fitness = original_fitness * sharing_factor
+```
+
+Since the algorithm minimizes fitness values, this adjustment makes semantically common solutions less attractive, creating selective pressure toward behavioral diversity. 
+
+#### Crossover and Mutation Techniques
+
+The genetic operators in this approach facilitate both exploration of the search space and exploitation of promising solutions.
+
+Subtree crossover exchanges genetic material between two parent trees by selecting random crossover points in each parent and swapping the entire subtrees rooted at those points. This operation preserves syntactic correctness while creating new combinations of mathematical components. To prevent excessive growth, the algorithm validates that the resulting offspring do not exceed a maximum depth, attempting alternative crossover points if necessary.
+
+Two distinct mutation operators modify existing solutions:
+
+1. Subtree mutation replaces a randomly selected subtree with an entirely new randomly generated one. This operation can introduce novel mathematical structures, facilitating exploration of the search space.
+
+2. Point mutation makes more targeted changes without altering the overall tree structure. For function nodes, it substitutes the function with another compatible one of the same arity. For terminal nodes, it either replaces a variable with another variable or slightly perturbs a constant value. Point mutation provides refinement capability, enabling fine-tuning of promising solutions.
+
+#### Adaptive Mutation Strength
+
+The algorithm implements an adaptive mutation mechanism that dynamically adjusts mutation rates based on evolutionary progress. The adaptation follows these principles:
+
+When improvements occur (finding better solutions), mutation strength decreases while during stagnation (no improvement for several generations), mutation strength increases
+
+This dynamic adjustment creates an automatic balance between exploration and exploitation. When progress stalls, the increased mutation encourages larger jumps in the search space. When promising areas are found, decreased mutation allows for more refined improvements. Each island maintains its own mutation strength, allowing different regions of the search space to be explored with different strategies simultaneously.
+
+#### Migration with Adaptive Mutation
+
+The island model divides the population into semi-isolated subpopulations that evolve independently most of the time. This approach leverages the benefits of parallel evolution—different islands can explore different regions of the search space and develop distinct solution strategies.
+
+Periodically, migration occurs where individuals move from one island to another. Migration follows these steps:
+
+1. For each source island, migrants are selected (a combination of the best individuals and some random selections).
+
+2. The semantic diversity of both source and destination islands is calculated.
+
+3. The mutation strength for migrants is adjusted based on the diversity relationship:
+   - When moving from a more diverse island to a less diverse one, minimal mutation is applied to preserve the valuable diversity being introduced.
+   - When moving from a less diverse island to a more diverse one, stronger mutation is applied to help migrants adapt to the new environment.
+
+4. Selected migrants undergo mutation with the calculated strength.
+
+5. The migrants replace the worst individuals in the destination island.
+
+
 ### Functions Developed
 
 #### Expression Tree Classes
