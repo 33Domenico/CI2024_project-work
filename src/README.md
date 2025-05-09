@@ -1509,6 +1509,153 @@ The function carefully balances exploitation of good solutions (through elitism 
 
 
 ### Results
+#### Input data
+
+```python
+problems = [
+
+    {"file_path": "../data/problem_0.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 20
+     },
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40,
+     "migration_rate": 0.1,
+     "tournament_size": 100,
+    },
+    
+
+    {"file_path": "../data/problem_1.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 100,
+         "max_tree_size": 20
+     },
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40,
+     "migration_rate": 0.1
+    },
+    
+
+    {"file_path": "../data/problem_2.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 60
+     },
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40,
+     "migration_rate": 0.12
+    },
+    
+ 
+    {"file_path": "../data/problem_3.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 65,
+     },
+     "use_islands": True,
+     "n_islands": 4,
+     "migration_interval": 40,
+     "migration_rate": 0.2
+    },
+
+    {"file_path": "../data/problem_4.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 100,
+     },
+     "use_islands": True,
+     "n_islands": 5,  
+     "migration_interval": 40,
+     "migration_rate": 0.08
+    },
+
+    {"file_path": "../data/problem_5.npz", 
+     "config": {
+         "max_depth": 10,  
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 80
+     },
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40,
+     "migration_rate": 0.15
+    },
+    
+
+    {"file_path": "../data/problem_6.npz", 
+     "config": {
+         "max_depth": 10,  
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 40,
+         "parsimony_coef": 0.05, 
+     },
+     "use_islands": True, 
+    },
+    
+
+    {"file_path": "../data/problem_7.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 60,
+         "tournament_size": 100, 
+         "elitism_rate": 0.2,    
+     },
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40,
+     "migration_rate": 0.25  
+    },
+    
+    {"file_path": "../data/problem_8.npz", 
+     "config": {
+         "max_depth": 8, 
+         "pop_size": 10000, 
+         "generations": 500,
+         "max_tree_size": 50,
+     },
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40,
+     "migration_rate": 0.15
+    }
+]
+```
+
+
+
+#### Result Table
+
+| Problem | Population Size | Generations | Simplified Expression | Fitness (MSE) |
+|---------|----------------|-------------|----------------------|---------------|
+| 0 | 10,000 | 500 | tan(x[0] - x[1] + tan(x[0])) + 0.15322121158548999*sin(x[1])/x[1] | 3.16172454411196e-11 |
+| 1 | 10,000 | 100 | 0.3782860327383275*x[0]/(x[0] - 0.7458863362755191) | 7.125940794232773e-34 |
+| 2 | 10,000 | 500 | (-1112267.7584117618*x[0] - 1112267.7584117618*sin(1.9842202415071949*sin(x[0])))*sqrt(-sqrt(x[1] + x[2])*sin(sin(x[0])) + sin(x[2]))*sqrt(x[1] - x[2]/sin(sin(x[0])) - tan(sin(x[0]))) + (x[0] + sin(1.50996183095054*sin(x[0])))*(-2189.267872464636*x[2]*(x[1] + x[2] - tan(sin(x[0]))) + 2742717.0591339385) | 5497243377966.15 |
+| 3 | 10,000 | 500 | 2*x[0]**2 + 1.888011443473933*x[0] - 5.751754953796507*x[1]**2 + x[1]*(-x[0]*x[1] - tan(tan(x[2])) + 7.960067489897881) - 1.866842958998818*x[1] - 3.499972972522648*x[2] + 3.343913409679408 | 5.3895077493714596e-05 |
+| 4 | 10,000 | 500 | sqrt(0.59442506135513196*x[0] - 10.843735353774745) + (0.01074365698385143*exp(0.50406178400871155*x[0]**3 - sin(2*cos(x[1]))) + 6.990332232812374)*cos(x[1]) | 6.244233514458511e-05 |
+| 5 | 10,000 | 500 | -6.226751041691537e-16*x[0]*x[1]*(374.93213046082964*x[0]**2*x[1]**3 + (-x[0] - x[1] + exp(x[0]))*exp(2*x[1]) - 0.2477463143761617*exp(0.4441536940414833*x[0] + x[1]) - 34390.847090009492*exp(x[0] + sin(sin(x[0]))) - exp(exp(x[1])) - 24175.980509968689) | 7.074053721003686e-21 |
+| 6 | 10,000 | 500 | tan(sqrt(-1.0268830067559338)) * (0.26623240720729413 * sqrt(sqrt(sqrt(-1.8923799511965012 + -1.6226422471794368) / x[1]))) | 3.430645922923297e-06 |
+| 7 | 10,000 | 500 | 9.431522071392338*sqrt(sqrt(x[0])*(x[1] + 1.605583320053832)*log(-x[0])) | 20.3946149322377 |
+| 8 | 10,000 | 500 | -x[1] - x[4] + sqrt(x[5]) - 3*x[5] - 39.027296247012435*sqrt(-x[4]) - (-x[4] + 39.027296247012435*sqrt(-x[5]) + 1523.1298523520709)*exp(-x[0]) - 5*exp(x[4]) + exp(2*x[5]) - 2*exp(x[5]) + 11691.94197593936 | 1042712.1291460795 |
+
+## Configuration Details
 
 
 
