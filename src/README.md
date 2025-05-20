@@ -956,7 +956,7 @@ The `calculate_semantic_diversity` function measures population diversity based 
 The returned diversity measure is the ratio of unique behaviors to total population size, providing a normalized metric between 0 (all expressions behave identically) and 1 (every expression behaves uniquely).
 
 ```python
-def migration(islands: List[Island], migration_rate: float = 0.2, X_sample: np.ndarray = None) -> None:
+def migration(islands: List[Island], migration_rate: float = 0.2, X: np.ndarray = None, y: np.ndarray = None, X_sample: np.ndarray = None) -> None:
     """
     Migration with adaptive mutation based on source-destination diversity relationship
     
@@ -1022,16 +1022,27 @@ def migration(islands: List[Island], migration_rate: float = 0.2, X_sample: np.n
         # Mutation of migrants if requested
         
         for j, migrant in enumerate(migrants):
+            was_mutated = False
             # Apply mutation with increased probability
             if random.random() < source_island.config.mutation_prob * mutation_strength:
+                
                 # Randomly choose the mutation type
                 mutation_choice = random.random()
                 
                 if mutation_choice < 0.7:  # 70% subtree mutation
                     migrants[j] = subtree_mutation(migrant, source_island.config, 
                                                  max_depth=source_island.config.max_depth)
+                    was_mutated = True
                 else:  # 30% point mutation
                     migrants[j] = point_mutation(migrant, source_island.config)
+                    was_mutated = True
+                
+                # Rcompute the fitness of the mutated individual
+                if was_mutated and X is not None and y is not None:                    
+                        migrants[j].fitness = calculate_fitness(migrants[j], X, y, source_island.config.parsimony_coef)
+
+        if X_sample is not None and len(migrants) > 1:
+            apply_semantic_fitness_sharing(migrants, X_sample)
         
         # Replace the worst in the destination island
         dest_sorted = sorted(dest_island.population, 
@@ -1204,7 +1215,44 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
                        ) -> ExpressionTree:
     """
     Main Genetic Programming Algorithm for Symbolic Regression
+    
+    Args:
+        X: Input features
+        y: Output target
+        config: GP configuration
+        
+        # Parameters for the island model
+        use_islands: Whether to use the island model
+        n_islands: Number of islands (if use_islands is True)
+        migration_interval: Interval of generations between migrations
+        migration_rate: Percentage of population migrating
+        
+        # Parameters for bloat control
+        bloat_control_interval: Interval of generations for bloat control
+       
+        # Parameters for adaptive mutation
+        use_adaptive_mutation: Whether to use adaptive mutation
+        base_mutation_rate: Base mutation rate (if None, use config.mutation_prob)
+        min_mutation_strength: Minimum mutation strength
+        max_mutation_strength: Maximum mutation strength
+        adaptation_rate: Rate of adaptation for mutation strength
+        
+    Returns:
+        Best expression tree found
     """
+
+
+    #Debug info
+    X_original = X.copy()
+    y_original = y.copy()
+    
+    print(f"Prima di qualsiasi elaborazione:")
+    print(f"X shape: {X.shape}, y shape: {y.shape}")
+    print(f"X mean: {np.mean(X)}, y mean: {np.mean(y)}")
+    print(f"X std: {np.std(X)}, y std: {np.std(y)}")
+    print(f"X range: [{np.min(X)}, {np.max(X)}], y range: [{np.min(y)}, {np.max(y)}]")
+
+
     start_time = time.time()
     print(f"Starting Genetic Programming for Symbolic Regression...")
     print(f"Configuration: pop_size={config.pop_size}, max_depth={config.max_depth}, "
@@ -1264,30 +1312,32 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
                          max_mutation_strength=max_mutation_strength,
                          adaptation_rate=adaptation_rate)
             
-            # Collect all individuals for statistics
+            # Collect all individuals for statistics and migration
             all_individuals = []
             for island in islands:
                 all_individuals.extend(island.population)
-            
+         
             # Periodic migration
             if (generation + 1) % migration_interval == 0:
-                    migration(islands, migration_rate=migration_rate, X_sample=X_sample)
+                    migration(islands, migration_rate=migration_rate, X=X, y=y, X_sample=X_sample)
             
-            # Calculate the best overall individual
-            current_best = min([island.best_individual for island in islands if island.best_individual], 
-                             key=lambda x: x.adjusted_fitness)
-            
+           
             #  Periodic bloat control
             if generation % bloat_control_interval == 0:
                 for island in islands:
-                    apply_bloat_control(island.population, config)
+                    apply_bloat_control(island.population,X,y, config)
 
+            # Calculate the best overall individual
+            current_best = min([island.best_individual for island in islands if island.best_individual], 
+                             key=lambda x: x.adjusted_fitness)
+  
+            
             # Calculate other statistics
             avg_fitness = np.mean([tree.adjusted_fitness for tree in all_individuals if tree.adjusted_fitness != float('inf')])
             avg_size = np.mean([tree.get_complexity() for tree in all_individuals])
             
         else:
-            # Single population evolution
+
             if use_adaptive_mutation:
                original_mutation_prob = config.mutation_prob
             
@@ -1303,28 +1353,31 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
                                               current_mutation_strength * (1 - adaptation_rate))
                 config.mutation_prob = original_mutation_prob * current_mutation_strength
             
+            
             # Apply genetic operators
             population = apply_genetic_operators(population, X, y, config)
             
             # Periodic bloat control
             if generation % bloat_control_interval == 0:
-                apply_bloat_control(population, config)
+                apply_bloat_control(population,X, y, config)
             
             # Calculate the best individual
             current_best = min(population, key=lambda x: float('inf') if x.adjusted_fitness is None else x.adjusted_fitness)
-            
+        
             # Calculate statistics
             avg_fitness = np.mean([tree.adjusted_fitness for tree in population if tree.adjusted_fitness != float('inf')])
             avg_size = np.mean([tree.get_complexity() for tree in population])
             
+
             if use_adaptive_mutation:
                 config.mutation_prob = original_mutation_prob
 
-        # Update the best global individual
+        # Upgrade the best global individual
         if current_best.adjusted_fitness < best_fitness:
             best_individual = current_best.copy()
             best_fitness = current_best.adjusted_fitness
             generations_without_improvement = 0
+            print("Upgrade the best global individual:")
             print(f"New best solution found:")
             print(f"  Expression: {best_individual.to_string()}")
             print(f"  Simplified Expression: {sympy_simplify_expression(best_individual.to_string())}")
@@ -1338,10 +1391,13 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
         stats['avg_fitness'].append(avg_fitness)
         stats['avg_size'].append(avg_size)
         stats['best_size'].append(best_individual.get_complexity())
+        #stats['diversity'].append(diversity)
         
         # Generation log
         if generation % 5 == 0 or generation == config.generations - 1:
            print(f"Generation {generation}, Best Fitness: {best_fitness}")
+        
+       
     
     total_time = time.time() - start_time
     print(f"Algorithm completed in {total_time:.2f} seconds")
@@ -1351,7 +1407,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
     print(f"  Fitness: {best_fitness}")
     print(f"  Complexity: {best_individual.get_complexity()} nodes")
     
-    # Visualiza statistics
+    # Visualizza statistiche
     plot_statistics(stats)
     
     return best_individual
@@ -1416,7 +1472,7 @@ def apply_genetic_operators(population: List[ExpressionTree], X: np.ndarray, y: 
     for tree in new_population:
         tree.age += 1
     
-    # Complete the population with new individuals
+    # Complete the population with new individual
     while len(new_population) < config.pop_size:
         # Select genetic operation (crossover or mutation)
         op_choice = random.random()
@@ -1454,7 +1510,7 @@ def apply_genetic_operators(population: List[ExpressionTree], X: np.ndarray, y: 
             # Mutation
             parent = tournament_selection(population, config.tournament_size)
             
-            # Randomly choose between subtree mutation and point mutation
+            # Rnandomly choose between subtree mutation and point mutation
             mutation_choice = random.random()
             
             if mutation_choice < 0.7:  # 70% subtree mutation
@@ -1477,7 +1533,7 @@ def apply_genetic_operators(population: List[ExpressionTree], X: np.ndarray, y: 
                     new_population.append(parent.copy())
         
         else:
-            # Reproduction (direct copy)
+            # Playback (direct copy)
             parent = tournament_selection(population, config.tournament_size)
             offspring = parent.copy()
             offspring.age += 1  # Increase age
@@ -1487,7 +1543,7 @@ def apply_genetic_operators(population: List[ExpressionTree], X: np.ndarray, y: 
     if len(new_population) > config.pop_size:
         new_population = new_population[:config.pop_size]
     
-    # Apply fitness sharing for diversity
+    # Fitness adjusted for diversity
     apply_semantic_fitness_sharing(new_population, X_sample)
     
     return new_population
@@ -1552,8 +1608,8 @@ problems = [
      },
      "use_islands": True,
      "n_islands": 5,
-     "migration_interval": 40,
-     "migration_rate": 0.12
+     "migration_interval": 30,
+     "migration_rate": 0.15
     },
     
  
@@ -1563,9 +1619,17 @@ problems = [
          "pop_size": 10000, 
          "generations": 500,
          "max_tree_size": 65,
+        "function_weights": {
+         "sin": 0.3,
+         "cos": 0.3,
+         "tan": 0.3,
+         "log": 0.4,
+         "sqrt": 0.4,
+        }
      },
+    
      "use_islands": True,
-     "n_islands": 4,
+     "n_islands": 5,
      "migration_interval": 40,
      "migration_rate": 0.2
     },
@@ -1585,11 +1649,19 @@ problems = [
 
     {"file_path": "../data/problem_5.npz", 
      "config": {
-         "max_depth": 10,  
+         "max_depth": 8,  
          "pop_size": 10000, 
          "generations": 500,
-         "max_tree_size": 80
-     },
+         "max_tree_size": 80,
+        "function_weights": {
+         "sin": 0.3,
+         "cos": 0.3,
+         "tan": 0.3,
+         "log": 0.4,
+         "sqrt": 0.4,
+        }
+     }, 
+
      "use_islands": True,
      "n_islands": 5,
      "migration_interval": 40,
@@ -1599,13 +1671,15 @@ problems = [
 
     {"file_path": "../data/problem_6.npz", 
      "config": {
-         "max_depth": 10,  
+         "max_depth": 8,  
          "pop_size": 10000, 
          "generations": 500,
          "max_tree_size": 40,
-         "parsimony_coef": 0.05, 
+         "parsimony_coef": 0.15, 
      },
-     "use_islands": True, 
+     "use_islands": True,
+     "n_islands": 5,
+     "migration_interval": 40, 
     },
     
 
@@ -1617,7 +1691,16 @@ problems = [
          "max_tree_size": 60,
          "tournament_size": 100, 
          "elitism_rate": 0.2,    
+         "function_weights": {
+         "sin": 0.4,
+         "cos": 0.4,
+         "tan": 0.4,
+         "log": 0.4,
+         "sqrt": 0.4,
+        },
      },
+    
+     "max_mutation_strength": 10.0,
      "use_islands": True,
      "n_islands": 5,
      "migration_interval": 40,
@@ -1630,7 +1713,15 @@ problems = [
          "pop_size": 10000, 
          "generations": 500,
          "max_tree_size": 50,
+        "function_weights": {
+         "sin": 0.3,
+         "cos": 0.3,
+         "tan": 0.3,
+         "log": 0.4,
+         "sqrt": 0.4,
+        }
      },
+   
      "use_islands": True,
      "n_islands": 5,
      "migration_interval": 40,
@@ -1645,15 +1736,15 @@ problems = [
 
 | Problem | Population Size | Generations | Simplified Expression | Fitness (MSE) |
 |---------|----------------|-------------|----------------------|---------------|
-| 0 | 10,000 | 500 | tan(x[0] - x[1] + tan(x[0])) + 0.15322121158548999*sin(x[1])/x[1] | 3.16172454411196e-11 |
-| 1 | 10,000 | 100 | 0.3782860327383275*x[0]/(x[0] - 0.7458863362755191) | 7.125940794232773e-34 |
-| 2 | 10,000 | 500 | (-1112267.7584117618*x[0] - 1112267.7584117618*sin(1.9842202415071949*sin(x[0])))*sqrt(-sqrt(x[1] + x[2])*sin(sin(x[0])) + sin(x[2]))*sqrt(x[1] - x[2]/sin(sin(x[0])) - tan(sin(x[0]))) + (x[0] + sin(1.50996183095054*sin(x[0])))*(-2189.267872464636*x[2]*(x[1] + x[2] - tan(sin(x[0]))) + 2742717.0591339385) | 5497243377966.15 |
-| 3 | 10,000 | 500 | 2*x[0]**2 + 1.888011443473933*x[0] - 5.751754953796507*x[1]**2 + x[1]*(-x[0]*x[1] - tan(tan(x[2])) + 7.960067489897881) - 1.866842958998818*x[1] - 3.499972972522648*x[2] + 3.343913409679408 | 5.3895077493714596e-05 |
-| 4 | 10,000 | 500 | sqrt(0.59442506135513196*x[0] - 10.843735353774745) + (0.01074365698385143*exp(0.50406178400871155*x[0]**3 - sin(2*cos(x[1]))) + 6.990332232812374)*cos(x[1]) | 6.244233514458511e-05 |
-| 5 | 10,000 | 500 | -6.226751041691537e-16*x[0]*x[1]*(374.93213046082964*x[0]**2*x[1]**3 + (-x[0] - x[1] + exp(x[0]))*exp(2*x[1]) - 0.2477463143761617*exp(0.4441536940414833*x[0] + x[1]) - 34390.847090009492*exp(x[0] + sin(sin(x[0]))) - exp(exp(x[1])) - 24175.980509968689) | 7.074053721003686e-21 |
-| 6 | 10,000 | 500 | tan(sqrt(-1.0268830067559338)) * (0.26623240720729413 * sqrt(sqrt(sqrt(-1.8923799511965012 + -1.6226422471794368) / x[1]))) | 3.430645922923297e-06 |
-| 7 | 10,000 | 500 | 9.431522071392338*sqrt(sqrt(x[0])*(x[1] + 1.605583320053832)*log(-x[0])) | 20.3946149322377 |
-| 8 | 10,000 | 500 | -x[1] - x[4] + sqrt(x[5]) - 3*x[5] - 39.027296247012435*sqrt(-x[4]) - (-x[4] + 39.027296247012435*sqrt(-x[5]) + 1523.1298523520709)*exp(-x[0]) - 5*exp(x[4]) + exp(2*x[5]) - 2*exp(x[5]) + 11691.94197593936 | 1042712.1291460795 |
+| 0 | 10,000 | 500 |x[0] - 2.8636943484015354 * cos(x[1] - -1.583968308262229) * exp(-3.2082386888331254) + (sinx[1] * exp(-3.154932922313467) + (sin(x[1] + (sqrt(tan(3.141592653589793) * (3.141592653589793 / exp(-3.2082386888331254))))) * exp(-3.154932922313467))) - sqrt(sqrt(tan(3.141592653589793) * (-3.154932922313467 / 0.2607832440731248) / 0.2532699192266387) * (x[1] + (x[1] - -1.0329760905609568) - -1.1123733897283157) * (sin(sinx[1] - -1.0439752897500634) + cos(-1.9944929251132986 * (x[1] - 3.1410124598253333))))  |2.6333150588752136e-10  |
+| 1 | 10,000 | 100 |sin(x[0]) | 7.125940794232773e-34 |
+| 2 | 10,000 | 500 |(((1430908.1901754038 / exp(sqrt((sqrt((x[2] + x[1])) - 0.0)))) * ((cos((sqrt(x[0]) + 0.0)) * (((x[1] + (x[0] + x[2])) + ((x[2] + x[1]) + x[1])) + ((x[2] + (x[0] + x[1])) + ((x[2] + x[0]) + (x[2] + x[1]))))) + ((x[2] + x[0]) + (x[0] + (sin(x[0]) + (x[0] + (x[0] + x[1]))))))) - (((((((x[0] + x[0]) * x[2]) - log(x[0])) - log(x[0])) - log(sin(exp(x[1])))) * ((((x[1] + (x[1] + x[1])) * (sqrt(-4378885.515735305) + sqrt(-4408770.793543419))) - x[2]) + (((x[0] + x[1]) + ((x[2] + x[1]) / (x[1] + x[1]))) * (sqrt(-4005445.0725207813) + x[2])))) * (sqrt((x[2] + x[1])) - 0.0))) |4807818991965.749 |
+| 3 | 10,000 | 500 |x[2] * sin(1.184037735453649) - (x[2] - sqrt(cos(1.2158401721189076) - log(sqrt(cos(108.78615012548357))) - (cos(log(x[2] - 2.674670908359565) - 2.6590687466126757) - sqrt(x[2] - sqrtx[2] - 3.17864466323484))) + (x[0] * x[0]) - (x[2] - sin(108.78615012548357) - x[2]) + (x[0] * x[0]) - x[2]) - (x[1] * x[1]) * x[1] |0.010529857078380717 |
+| 4 | 10,000 | 500 |cos(exp(-8.23509920982603 - (cos(x[0] + x[1]) * x[0]) + (x[1] + tan(3.141592653589793) + tan(3.141592653589793) + tan(3.141592653589793) - tan(exp(-10.613659135997567))))) + (sqrt(-10.822240096384276 + (x[0] * exp(-0.9405033382101015) + (x[0] * cos(-0.9916749730176175) * exp(-0.9916749730176175))) + (sin(7.871174350285515) * (sqrt(7.871174350285515) * cos(exp(-7.795847756522948) - x[1])))) + (sqrt(-10.205488998391495) * cos(exp(-8.36973460432399) - x[1]) - tan(3.141592653589793) + tan(3.141592653589793))) |7.296205678194489e-05|
+| 5 | 10,000 | 500 | ((((x[0] * (x[0] * x[1])) + (x[0] * (log((exp(x[1]) + x[1])) * 4.092327718778701))) * sin((sin(3.141592653589793) * sqrt(log((exp(x[1]) + (3.0580787826247215 + x[1]))))))) * (((exp((x[1] + x[1])) - ((exp(6.5609367685064) - ((5.939230066817374 * x[0]) * exp(x[0]))) / exp(cos((5.939230066817374 + x[1]))))) - (exp(5.083623282487277) * ((((5.547345449854117 * 6.5609367685064) + 4.9787556043961265) - (exp(5.083623282487277) / (x[0] / 5.547345449854117))) / x[1]))) - ((((((5.939230066817374 + 5.939230066817374) * (4.818438684907152 * 5.547345449854117)) * exp(4.9787556043961265)) - (exp((5.083623282487277 + x[1])) - (exp(x[1]) * exp(x[0])))) + (x[0] * ((x[0] * (x[1] * x[0])) * exp((3.0580787826247215 + x[1]))))) / 4.032984299426399))) |2.5114309439134834e-21 |
+| 6 | 10,000 | 500 |-0.69452036519992146*x[0] + 1.6945203523816695*x[1] |1.472670161336907e-24|
+| 7 | 10,000 | 500 |(log((((log(((x[0] * 2.644376733863939) * (x[1] - x[0]))) / (((3.141592653589793 / -19.969108235826695) + x[0]) * (x[1] - x[0]))) / (x[1] * (x[1] - ((3.141592653589793 / -385.6635161890224) + x[0])))) * (log((-20.655152549695234 * (tan(x[1]) * tan(x[0])))) / ((x[0] - x[1]) - ((x[1] * x[0]) * ((x[0] - x[1]) - 0.0)))))) * exp((x[1] * (((x[1] / -253.66421093942046) / (tan((x[0] * 2.644376733863939)) * x[1])) + ((((x[0] * x[1]) * (x[1] * x[0])) / -253.66421093942046) + x[0]))))) |101.79420934801004 |
+| 8 | 10,000 | 500 | 10.659130211164627*(x[5] + log(sin(0.37359305824004595*x[5])))*(x[5] + 101.95258757064658*(sin(x[4]) + exp(x[4])/x[5])/(-1816.4551157931455*sqrt(x[5]) - 1816.4551157931455*sin(sin(x[5]))) + (exp(x[4] - sin(x[5])) + sin(x[4]))/(-1816.4551157931455*x[0] - 1816.4551157931455*(-x[0] + x[5])/x[5]))*(x[5] + log(-sin(0.26247181944901369*x[5])) + log(-sin(0.27396815695149049*x[5])))*sqrt(x[5]**3) |849282.9259112123 |
 
 
 
