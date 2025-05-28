@@ -343,6 +343,17 @@ From Gpir0:
 From s331345:
 > "The Improved RHCM v2 is a further improvement to RHCM that ensures the set with maximum coverage is not only preserved but also enforces mutation to avoid stagnation... The algorithms demonstrate the effectiveness of adaptive techniques for improving performance over time, with Improved RHCM v2 yielding the best results across most instances."
 
+### My Peer Reviwes
+
+To LorenzoFormentin:
+> "The solution reported, is an good approach to the set covering problem. The use of the hill climber with a simple tweak that goes has changing only one value in the solution, allows to concert on the exploitation, tending however very little towards the exploration this can then lead to the possibility of getting stuck in possible local maxima.
+Overall ,Great job!!!"
+
+To XhoanaShkajoti:
+> "The reported solution is an excellent approach to the set coverage problem. The use of multiple mutation tweaks in combination with simulated Annealing allows a wide movement between the different solutions. The approach tends toward both exploitation and exploration making use of multiple fixed mutation tweaks and simulated Annealing. Thanks to the latter in particular, it is able to accept with a given temperature-dependent probability (which increases each time a worse solution is not accepted) worse solutions, thus allowing to move out of possible local minima.
+Good job!!!"
+
+
 ### Reflections after laboratory
 
 While I initially selected Improved RHCM v2 as the best algorithm based on the experimental results, further reflection revealed an important insight: the approach of always preserving the set with maximum coverage may not actually be optimal for all instances. A set that covers many elements might also have a disproportionately high cost, whereas multiple smaller sets might cover the same elements at a lower total cost.
@@ -713,6 +724,20 @@ From LucianaColella7:
 > "The Genetic Algorithm is well-implemented with a good mix of techniques, obtaining very good results. The adaptive mutation rate is a great addition, as it adjusts to balance exploration and exploitation, especially when it detects a lack of improvement. This is a smart way to prevent the algorithm from getting stuck in a local optimum. What I appreciated the most is the use of the Simulated Annealing restart. Another effective way to avoid local minima and give the algorithm the chance to keep exploring
 In the README, it would have been helpful to include a summary of results for each country, as it would provide a clearer picture of the best outcomes from your implementation."
 
+### My Peer Reviwes
+
+To GiovanniTagliaferri:
+> "Your work on the travelling salesman problem (TSP) with an approach combining the Greedy algorithm and a Genetic Algorithm is well done and shows a good understanding of both the theoretical foundations and their practical application.
+One aspect I noticed concerns the calculation of distances. You chose to calculate them manually using the Euclidean formula, and the method works well for small sets of cities. However, it would be useful to explore the use of a library such as Geopy, especially for larger datasets: these libraries are optimised to calculate distances between geographical coordinates, saving computational resources and improving the efficiency of the algorithm.
+Regarding the mutation, you have opted for a scramble mutation in both the implementation of the evolutionary algorithm and the elite solutions. This approach certainly introduces variety, but it can also lead to the loss of good gene segments, making it more difficult to maintain valid solutions between generations. I would suggest experimenting with an inversion mutation: instead of randomly rearranging genes, this mutation reverses a section of genes, maintaining blocks that may contain good solutions. The scramble mutation, on the other hand, is good for avoiding the risk of stagnation and lack of diversity.
+Furthermore, as far as crossover is concerned, the partially mapped crossover (PMX) method you implemented is a good starting point. However, it can mix genes too much and break up sections of solutions that could be useful. You could try an inver-over crossover, which allows you to keep larger sections of good genes and preserve significant sequences, improving the maintenance of promising substructures between generations.
+Overall, this is solid work. Some minor adjustments such as the use of a distance library and slightly different mutation and crossover strategies could make your algorithm more efficient and further improve your results."
+
+To michepaolo:
+> "The code addresses the travelling salesman problem by combining a greedy approach (fast algorithm) with a genetic algorithm (slow algorithm) to find optimised paths. The use of mutation and crossover functions is well thought out, especially with the implementation of inversion_mutation, which preserves significant sections of genes by inverting their order. This approach is effective in maintaining good solutions while avoiding altering the pathways found too much.
+Inversion_over_crossover is also interesting because, unlike other crossovers, it does not drastically change genes and preserves effective sections of the pathway. In addition, the choice of dynamically varying the probability of using inver_over_crossover versus mutation and vice versa is remarkable, maintaining a good balance between exploration and exploitation of the solution.
+The addition of a local_search on the first 10 individuals further improves the solutions, avoiding letting the algorithm stagnate. In addition, controlling the best_cost_unchanged variable, which triggers the random reintroduction of new individuals when no improvement is observed, is a good attempt (surely there are better ones) to reshuffle the population and overcome any blockages caused by lack of diversity. However, since parental selection only takes place among the first half of the population, there is a risk that these new random solutions, due to their high initial cost, are never really considered, thus limiting the contribution to population diversity.
+In summary, the combined approach of greedy, targeted crossover, local search and dynamic management of crossover and mutation probability led to excellent results, balancing solution quality and genetic diversity effectively. Excellent work!"
 
 ## Laboratory 3: N-Puzzle Solver
 
@@ -954,6 +979,32 @@ From GioSilve:
 From YaelNaor11:
 > "Wow, it's impressive that you worked on the 9-puzzle and managed to implement the solution in such a short time! Your code is clear and demonstrates a good understanding of path-searching algorithms. Great work!"
 
+### My Peer Reviwes
+
+To graicidem:
+> "Good job on implementing, in addition to A*, a bi-directional version of it. This approach significantly reduces the number of nodes explored, thanks to the two parallel searches: one starting from the initial state and one from the target state, meeting halfway.
+The combined use of two heuristics reinforces the effectiveness of the algorithm:
+
+>1. **Manhattan distance,** which measures how far each tile is from the final position.
+>2. **Linear conflicts**, which penalise tiles that block each other in the same row or column.
+>These choices ensure optimal solutions with fewer computational resources. To further improve, new heuristics could be introduced especially with higher values of N, such as the detection of misplaced corner tiles or necessary end moves, increasing accuracy without compromising efficiency.
+
+>1. **Corner tiles detection**: detects and penalises situations where corner tiles are stuck in wrong positions, making their placement more complex.
+>2. **Last moves detection**: penalises configurations that require additional moves to correctly position the last pieces, including the empty tile and the final pieces of the puzzle.
+
+>Overall, your code is clear and demonstrates a good understanding of path-searching algorithms. Great work!"
+
+To fedefortu8:
+> "Excellent work in implementing the A* search algorithm to solve the N^2-1 puzzle problem. This approach demonstrates a sound understanding of informed search, effectively exploiting the Manhattan distance as a heuristic function. This choice is well motivated for the context of the puzzle, as it measures the overall distance between each tile and its target position, guiding the search optimally.
+The implementation lacks a required element in the delivery: a counter that tracks the total number of states (or actions) evaluated during execution. (Recommendation to add it)
+To further improve the algorithm, it would also be interesting to include additional heuristic criteria, such as:
+
+>1. **Linear Conflict:** Add penalties for tiles in the correct row or column but in the wrong order, improving the accuracy of the estimation.
+>2. **Corner Tiles Detection:** Evaluate problematic configurations with tiles in the wrong corners, a common situation in puzzles.
+>3. **Last Move Detection:** Introduce a check to avoid repetitive moves that do not make significant progress.
+
+>The last two especially with larger N-values
+Overall, your code is clear and demonstrates a good understanding of path-searching algorithms. Great work!"
 
 ## Project work: Symbolic Regression with Genetic Programming
 
@@ -2699,7 +2750,7 @@ problems = [
 | 3 | 10,000 | 500 |x[2] * sin(1.184037735453649) - (x[2] - sqrt(cos(1.2158401721189076) - log(sqrt(cos(108.78615012548357))) - (cos(log(x[2] - 2.674670908359565) - 2.6590687466126757) - sqrt(x[2] - sqrtx[2] - 3.17864466323484))) + (x[0] * x[0]) - (x[2] - sin(108.78615012548357) - x[2]) + (x[0] * x[0]) - x[2]) - (x[1] * x[1]) * x[1] |0.010529857078380717 |
 | 4 | 10,000 | 500 |cos(exp(-8.23509920982603 - (cos(x[0] + x[1]) * x[0]) + (x[1] + tan(3.141592653589793) + tan(3.141592653589793) + tan(3.141592653589793) - tan(exp(-10.613659135997567))))) + (sqrt(-10.822240096384276 + (x[0] * exp(-0.9405033382101015) + (x[0] * cos(-0.9916749730176175) * exp(-0.9916749730176175))) + (sin(7.871174350285515) * (sqrt(7.871174350285515) * cos(exp(-7.795847756522948) - x[1])))) + (sqrt(-10.205488998391495) * cos(exp(-8.36973460432399) - x[1]) - tan(3.141592653589793) + tan(3.141592653589793))) |7.296205678194489e-05|
 | 5 | 10,000 | 500 | ((((x[0] * (x[0] * x[1])) + (x[0] * (log((exp(x[1]) + x[1])) * 4.092327718778701))) * sin((sin(3.141592653589793) * sqrt(log((exp(x[1]) + (3.0580787826247215 + x[1]))))))) * (((exp((x[1] + x[1])) - ((exp(6.5609367685064) - ((5.939230066817374 * x[0]) * exp(x[0]))) / exp(cos((5.939230066817374 + x[1]))))) - (exp(5.083623282487277) * ((((5.547345449854117 * 6.5609367685064) + 4.9787556043961265) - (exp(5.083623282487277) / (x[0] / 5.547345449854117))) / x[1]))) - ((((((5.939230066817374 + 5.939230066817374) * (4.818438684907152 * 5.547345449854117)) * exp(4.9787556043961265)) - (exp((5.083623282487277 + x[1])) - (exp(x[1]) * exp(x[0])))) + (x[0] * ((x[0] * (x[1] * x[0])) * exp((3.0580787826247215 + x[1]))))) / 4.032984299426399))) |2.5114309439134834e-21 |
-| 6 | 10,000 | 500 |-0.69452036519992146*x[0] + 1.6945203523816695*x[1] |1.472670161336907e-24|
+| 6 | 10,000 | 500 |((sqrt(sqrt(8.254213750314564)) * ((x[1] + ((((-10.225547483951923 * 9.025417700203663) * (9.590571516689572 * 8.318079817950606)) * ((x[0] * 8.254213750314564) * tan(3.141592653589793))) - ((x[1] * tan(3.141592653589793)) * ((-9.347525141879945 * 9.590571516689572) * (-11.05365123789452 * 9.590571516689572))))) - ((((-10.225547483951923 * 8.254213750314564) * (8.254213750314564 * 6.944557806606948)) * (((-9.892836400798545 * 8.254213750314564) * (8.254213750314564 * 6.944557806606948)) * ((x[0] * 8.254213750314564) * tan(3.141592653589793)))) - ((((-9.347525141879945 * 8.318079817950606) * tan(3.141592653589793)) * ((-9.36898251373954 * 8.254213750314564) * x[1])) * ((-9.570992156231187 * (8.254213750314564 * 6.944557806606948)) * (-9.36898251373954 * 8.254213750314564)))))) - (((exp(-7.99007532984518) * (2.0257904697066818 * ((x[0] * cos(1.0567228657700947)) + x[1]))) + (x[0] - ((exp((-9.36898251373954 * 2.0257904697066818)) * x[1]) - ((x[1] * tan(3.141592653589793)) * ((-9.347525141879945 * 8.318079817950606) * (-10.225547483951923 * 9.590571516689572)))))) / sqrt(2.074545847057164))) |1.472670161336907e-24|
 | 7 | 10,000 | 500 |(log((((log(((x[0] * 2.644376733863939) * (x[1] - x[0]))) / (((3.141592653589793 / -19.969108235826695) + x[0]) * (x[1] - x[0]))) / (x[1] * (x[1] - ((3.141592653589793 / -385.6635161890224) + x[0])))) * (log((-20.655152549695234 * (tan(x[1]) * tan(x[0])))) / ((x[0] - x[1]) - ((x[1] * x[0]) * ((x[0] - x[1]) - 0.0)))))) * exp((x[1] * (((x[1] / -253.66421093942046) / (tan((x[0] * 2.644376733863939)) * x[1])) + ((((x[0] * x[1]) * (x[1] * x[0])) / -253.66421093942046) + x[0]))))) |101.79420934801004 |
 | 8 | 10,000 | 500 | 10.659130211164627*(x[5] + log(sin(0.37359305824004595*x[5])))*(x[5] + 101.95258757064658*(sin(x[4]) + exp(x[4])/x[5])/(-1816.4551157931455*sqrt(x[5]) - 1816.4551157931455*sin(sin(x[5]))) + (exp(x[4] - sin(x[5])) + sin(x[4]))/(-1816.4551157931455*x[0] - 1816.4551157931455*(-x[0] + x[5])/x[5]))*(x[5] + log(-sin(0.26247181944901369*x[5])) + log(-sin(0.27396815695149049*x[5])))*sqrt(x[5]**3) |849282.9259112123 |
 
