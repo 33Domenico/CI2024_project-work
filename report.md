@@ -1,3 +1,23 @@
+---
+title: "Computational Intelligence Report"
+author: "Domenico Scalera s333304"
+geometry: margin=0.8in
+fontsize: 10pt
+header-includes:
+  - \usepackage{fvextra}
+  - \usepackage{titlesec}
+  - \titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+  - \titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+  - \titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
+  - \DefineVerbatimEnvironment{verbatim}{Verbatim}{
+      breaklines=true,
+      breakanywhere=true,
+      fontsize=\footnotesize,
+      frame=single,
+      framesep=2mm
+    }
+---
+
 # Computational Intelligence Report
 
 ## Laboratory 1: Set Cover Problem
@@ -19,6 +39,7 @@ To implement and compare different hill climbing algorithms for solving the Set 
 
 ### Problem Definition
 The Set Cover Problem involves selecting a minimum-cost subset of sets that cover all elements in a universe. Formally:
+
 - Given a universe U of n elements
 - A collection S of m sets containing elements from U
 - A cost function c assigning costs to each set in S
@@ -38,9 +59,10 @@ def generate_instance(universe_size, num_sets, density):
 ```
 **Explanation:**  
 This function creates random problem instances with specified parameters:
-- `universe_size`: The number of elements in the universe
-- `num_sets`: The number of sets available to choose from
-- `density`: The probability of an element being included in a set
+
+-  `universe_size`: The number of elements in the universe
+-  `num_sets`: The number of sets available to choose from
+-  `density`: The probability of an element being included in a set
 
 The function ensures every element in the universe is covered by at least one set. Costs are assigned to each set proportionally to its size raised to the power of 1.1, creating a slight superlinear penalty for larger sets.
 
@@ -58,6 +80,7 @@ def fitness(solution, sets, costs):
     return (valid(solution, sets), -cost(solution, costs))
 ```
 **Explanation:**  
+
 - `valid()`: Checks if a solution covers all elements in the universe
 - `cost()`: Calculates the total cost of a solution (decorated with a counter to track function calls)
 - `fitness()`: Returns a tuple combining validity and negative cost (negative because we maximize fitness but minimize cost)
@@ -84,6 +107,7 @@ def solve_instance_hc(instance, max_iterations=10_000):
 ```
 **Explanation:**  
 This implements a simple hill climbing algorithm that:
+
 1. Generates a random initial solution
 2. Iteratively applies small modifications (single-bit tweaks) to the solution
 3. Accepts modifications that improve the fitness
@@ -129,6 +153,7 @@ def solve_instance(instance, max_iterations=10_000):
 ```
 **Explanation:**  
 This enhanced version:
+
 1. Keeps track of the best solution found so far
 2. Counts iterations without improvement
 3. Applies a more significant mutation(multiple tweak) when stuck (after 1000 iterations without improvement)
@@ -157,6 +182,7 @@ def solve_instance_rhcm(instance, max_iterations=10_000):
 ```
 **Explanation:**  
 This approach:
+
 1. Uses random heavy mutations that can flip multiple bits simultaneously
 2. Each bit has a fixed 1% probability of flipping in each iteration
 3. Allows the algorithm to make larger jumps in the solution space
@@ -206,6 +232,7 @@ def solve_instance_with_adaptive_strength(instance, max_iterations=10_000, buffe
 ```
 **Explanation:**  
 This version introduces several improvements:
+
 1. Dynamic adjustment of mutation strength based on recent performance
 2. A buffer that tracks successful improvements over a window of iterations
 3. Increases mutation strength when improvements are rare (exploration)
@@ -272,6 +299,7 @@ def solve_instance_with_adaptive_strength2(instance, max_iterations=20_000, buff
 ```
 **Explanation:**  
 The final refined version adds these key improvements:
+
 1. Identifies the set with maximum coverage
 2. Prevents this high-value set from being removed in mutations
 3. Always includes this set in the solution
@@ -291,6 +319,7 @@ The algorithms were tested on six different problem instances with varying param
 | 6        | 100,000       | 10,000         | 0.3     |
 
 Performance was measured in terms of:
+
 - Solution validity (coverage of all elements)
 - Solution cost (sum of costs of selected sets)
 - Convergence behavior (fitness improvement over iterations)
@@ -330,13 +359,15 @@ The **Improved RHCM v2** algorithm produced the best results (comparable with th
 #### Visualizations
 
 #### Improved RHCM v2
-![alt text](/report-image/image.png)
+
+![Improved RHCM v2](C:/Users/domen/Desktop/CI2024_project-work/report-image/image.png)
 
 #### Imroved RHCM 
 
-![alt text](/report-image/image-1.png)
+![ Imroved RHCM ](C:/Users/domen/Desktop/CI2024_project-work/report-image/image-1.png)
 
 ### Peer Review
+
 From Gpir0:
 > "You've done a good job testing various algorithms and writing clean code. The RHCM v2 algorithm you have chosen takes an intelligent approach: selecting the set with the greatest coverage and excluding it from tweaks. The idea of a dynamic buffer that adjusts the algorithm's strength based on how 'stuck' it is in finding a better solution is brilliant. It resolves many issues found in other proposed algorithms (including mine). As for the results, you've achieved an improvement compared to the classic hill climbing algorithm. For some instances, you achieved values above the student average, while for others, you were at the average. A possible improvement would be to define a ranking of the set coverage and use that directly, instead of searching for the maximum in each tweak. Since the evaluation considers the number of calls to the 'cost function', this improvement is not strictly necessary."
 
@@ -377,6 +408,7 @@ To develop an efficient evolutionary algorithm for solving the Traveling Salesma
 
 ### Problem Definition
 The Traveling Salesman Problem involves finding the shortest possible route that visits each city exactly once and returns to the starting city. Formally:
+
 - Given a set of cities and the distances between them
 - Find a tour (a closed path) that visits each city exactly once
 - Minimize the total distance traveled
@@ -411,6 +443,7 @@ def tsp_cost(route, dist_matrix):
     return (total_distance, valid(route))
 ```
 **Explanation:**  
+
 - `valid()`: Checks if a TSP solution is valid by ensuring that it starts and ends at the same city and visits all cities exactly once.
 - `tsp_cost()`: Calculates the total distance of a route and checks its validity. The `@counter` decorator keeps track of the number of function calls for performance analysis.
 
@@ -483,6 +516,7 @@ def simulated_annealing_population(dist_matrix, initial_temp, cooling_rate, stop
 ```
 **Explanation:**  
 Instead of generating a completely random initial population, this function uses Simulated Annealing to create a set of high-quality diverse solutions. It starts with a solution from the Nearest Neighbor algorithm and generates variations by:
+
 1. Gradually reducing the temperature
 2. Accepting improving solutions and occasionally worse solutions (with probability based on temperature)
 3. Building a population of solutions encountered during the search
@@ -501,6 +535,7 @@ def tweak(tsp):
 ```
 **Explanation:**  
 This mutation operator:
+
 1. Selects two random positions in the route (excluding the start/end city)
 2. Reverses the segment between these positions
 3. Maintains tour validity (because reversing a segment preserves connectivity)
@@ -539,6 +574,7 @@ def inver_over_crossover(parent1, parent2, num_iterations=1):
 ```
 **Explanation:**  
 This specialized crossover operator for TSP:
+
 1. Creates a child that inherits characteristics from both parents
 2. Uses inversion operations as the basis for crossover
 3. Selects a city from the first parent, then a destination city from either parent
@@ -558,6 +594,7 @@ def tournament_selection(population, k=5):
 ```
 **Explanation:**  
 Tournament selection provides selection pressure while maintaining diversity:
+
 1. Randomly selects k individuals from the population
 2. Returns the best individual from this tournament
 3. Allows both good and occasionally average solutions to be selected
@@ -757,6 +794,7 @@ To implement an efficient A* search algorithm for solving the N-puzzle problem, 
 The N-puzzle consists of (N²-1) numbered tiles and one empty space arranged in an N×N grid. The goal is to rearrange the tiles from an initial scrambled state to a target configuration by sliding tiles into the empty space.
 
 Formally:
+
 - Initial state: A random configuration of tiles
 - Actions: Moving a tile adjacent to the empty space into that space
 - Goal state: Tiles arranged in order with the empty space in the bottom-right corner
@@ -776,6 +814,7 @@ TARGET_POSITIONS = {
 }
 ```
 **Explanation:**  
+
 - `PUZZLE_DIM`: Defines the puzzle size (9×9)
 - `Action`: A named tuple representing a move between two positions (the empty space and an adjacent tile)
 - `TARGET_POSITIONS`: A pre-calculated dictionary mapping each tile value to its target position, optimizing heuristic calculations
@@ -799,6 +838,7 @@ def do_action(state: np.ndarray, act: Action)-> np.ndarray:
     return new_state
 ```
 **Explanation:**  
+
 - `available_actions()`: Finds all valid moves by identifying adjacent positions to the empty space
 - `do_action()`: Applies a move by swapping the empty space with an adjacent tile
 
@@ -1025,6 +1065,7 @@ To implement an efficient Genetic Programming (GP) algorithm for symbolic regres
 
 ### Problem Definition
 Symbolic regression involves finding a mathematical expression that best fits a given dataset of input-output pairs, without assuming a specific model structure. Formally:
+
 - Given a dataset of observations (X, y)
 - Find a symbolic expression f such that f(X) approximates y as closely as possible
 
@@ -1048,7 +1089,7 @@ The semantic distance between two expressions is calculated by evaluating them o
 semantic_distance(tree1, tree2) = mean((normalized_output1 - normalized_output2)²)
 ```
 
-Fitness sharing penalizes individuals that behave similarly to others in the population. For each individual, a sharing factor is calculated based on how many other expressions produce similar outputs and how close these outputs are. This factor increases as more semantically similar neighbors are found within a specified radius (σ).
+Fitness sharing penalizes individuals that behave similarly to others in the population. For each individual, a sharing factor is calculated based on how many other expressions produce similar outputs and how close these outputs are. This factor increases as more semantically similar neighbors are found within a specified radius (sigma).
 
 The adjusted fitness is then calculated by multiplying the original fitness by this sharing factor:
 
@@ -1136,6 +1177,7 @@ class FunctionNode(Node):
 
 **Explanation:**  
 The `FunctionNode` class represents operations in the expression tree. Each function node stores:
+
 - The actual mathematical function to be applied (e.g., numpy's add, subtract)
 - The arity (number of arguments) the function requires
 - A symbolic representation for display (e.g., '+', '-', '*')
@@ -1233,6 +1275,7 @@ def grow_tree(config: GPConfig, max_depth: int, min_depth: int = 1, current_dept
 
 **Explanation:**  
 The `grow_tree` method generates expression trees with variable shapes. It follows these rules:
+
 1. At the maximum depth, only terminal nodes (variables or constants) are created
 2. Before the minimum depth, only function nodes are created to ensure sufficient complexity
 3. Between min_depth and max_depth, nodes are created with a 50% probability of being a function or terminal
@@ -1295,6 +1338,7 @@ def ramped_half_and_half(config: GPConfig, min_depth: int, max_depth: int) -> Ex
 
 **Explanation:**  
 The `ramped_half_and_half` method is the primary initialization technique used by the algorithm. It:
+
 1. Randomly selects a depth value from a range (typically 2-6)
 2. Randomly chooses between the 'grow' and 'full' methods
 3. Wraps the resulting tree in an ExpressionTree object
@@ -1335,6 +1379,7 @@ def safe_tan(a: np.ndarray) -> np.ndarray:
 
 **Explanation:**  
 These protected mathematical functions ensure robustness during expression evaluation by handling edge cases gracefully:
+
 - `safe_div` avoids division by zero by returning 1 when the denominator is near zero
 - `safe_log` handles negative and zero inputs by taking the absolute value and returning 0 for values near zero
 - `safe_sqrt` accepts negative inputs by taking the absolute value first
@@ -1388,6 +1433,7 @@ def calculate_fitness(tree: ExpressionTree, X: np.ndarray, y: np.ndarray,
 
 **Explanation:**  
 The `calculate_fitness` function evaluates how well an expression fits the training data:
+
 1. It evaluates the expression tree on the input features X
 2. Handles invalid outputs (NaN or infinite values) by assigning the worst possible fitness
 3. Calculates the mean square error (MSE) between predictions and targets
@@ -1466,10 +1512,11 @@ def apply_semantic_fitness_sharing(population: List[ExpressionTree], X_sample: n
 
 **Explanation:**  
 The `apply_semantic_fitness_sharing` function promotes behavioral diversity in the population:
+
 1. It evaluates and normalizes all expressions on a sample of the input data
 2. Calculates the semantic distance (difference in outputs) between each pair of individuals
 3. Increases the fitness (worse) of expressions that produce similar outputs to others
-4. Uses a linear sharing kernel with a radius parameter σ to control the effect strength
+4. Uses a linear sharing kernel with a radius parameter sigma to control the effect strength
 
 #### Selection Method
 ```python
@@ -1503,6 +1550,7 @@ def tournament_selection(population: List[ExpressionTree], tournament_size: int,
 
 **Explanation:** 
 The `tournament_selection` function works by:
+
 1. Randomly sampling a subset of individuals (the "tournament participants") from the population
 2. Selecting the individual with the best fitness (lowest value in this minimization problem) from this subset
 3. Optionally(always true) using diversity-adjusted fitness instead of raw fitness to promote diversity
@@ -1577,6 +1625,7 @@ def select_parents(population: List[ExpressionTree], config: GPConfig,
 
 **Explanation:** 
 The `select_parents` function combines multiple selection strategies to choose parent pairs for reproduction:
+
 1. It employs a probabilistic approach, using tournament selection with diversity-adjusted fitness 90% of the time
 2. It uses age-weighted selection 10% of the time to promote genetic diversity
 3. It attempts to ensure the parents are different individuals (up to 5 tries)
@@ -1651,6 +1700,7 @@ def subtree_crossover(parent1: ExpressionTree, parent2: ExpressionTree,
 
 **Explanation:** 
 The `subtree_crossover` function implements the primary recombination operator for tree-based genetic programming:
+
 1. It randomly selects crossover points in both parent trees
 2. Exchanges subtrees between parents to create two new offspring
 3. Verifies that the resulting trees don't exceed the maximum allowed depth
@@ -1708,6 +1758,7 @@ def subtree_mutation(tree: ExpressionTree, config: GPConfig,
 
 **Explanation:** 
 The `subtree_mutation` function introduces larger-scale changes to an expression:
+
 1. It randomly selects a node in the tree as the mutation point
 2. Calculates the allowable depth for a replacement subtree based on the node's position and maximum depth constraint
 3. Generates a completely new random subtree using the grow method
@@ -1792,6 +1843,7 @@ def point_mutation(tree: ExpressionTree, config: GPConfig) -> ExpressionTree:
 
 **Explanation:** 
 The `point_mutation` function implements a more conservative mutation operator that preserves most of the tree structure:
+
 1. It randomly selects a single node in the tree as the mutation point
 2. Applies different mutation strategies based on the node type:
    - For function nodes, it replaces the function with another compatible one of the same arity
@@ -1893,6 +1945,7 @@ The `Island` class implements the island model for population distribution in ge
 
 **Explanation:**  
 The `evolve` method handles the progression of an island's population through one generation:
+
 1. It temporarily adjusts the mutation probability based on the island's adaptive mutation strength
 2. Applies genetic operators (selection, crossover, mutation) to create a new population
 3. Updates the island's best solution if an improvement is found
@@ -2070,6 +2123,7 @@ def migration(islands: List[Island], migration_rate: float = 0.2, X: np.ndarray 
 
 **Explanation:**  
 The `migration` function manages the periodic exchange of individuals between islands:
+
 1. It first calculates the semantic diversity of each island's population
 2. For each island pair, it determines the appropriate mutation strength based on diversity relationship
    - Uses lower mutation when moving from more diverse to less diverse islands
@@ -2116,6 +2170,7 @@ def sympy_simplify_expression(expression: str) -> str:
 
 **Explanation:**  
 The `sympy_simplify_expression` function uses symbolic mathematics to transform evolved expressions into more human-readable forms:
+
 1. It converts the expression from the GP's format to sympy's format
 2. Creates symbolic variables for each input feature
 3. Parses and simplifies the expression using sympy's powerful simplification engine
@@ -2191,6 +2246,7 @@ class GPConfig:
 
 **Explanation:**  
 The `GPConfig` class centralizes all configuration parameters for the Genetic Programming algorithm:
+
 1. It manages the set of available functions (arithmetic, trigonometric, exponential) and terminals (variables, constants)
 2. Allows custom weighting of functions and terminals to bias the search process
 3. Controls tree size constraints (min/max depth, maximum size) to prevent bloat
@@ -2751,7 +2807,7 @@ problems = [
 #### Result Table
 
 
-| Problem | Population Size | Generations | Islands | Simplified Expression | Fitness (MSE) |
+| Problem | Population Size | Generations | Islands | Expression | Fitness (MSE) |
 |---------|----------------|-------------|---------|----------------------|---------------|
 | 0 | 10,000 | 500 | 5 | `x[0] + (-2.8636943484015354 * cos(x[1] - -1.583968308262229)) * exp(-3.2082386888331254) + sin(x[1]) * exp(-3.154932922313467) + sin(x[1] + sqrt(tan(3.141592653589793)) * (3.141592653589793 / exp(-3.2082386888331254))) * exp(-3.154932922313467) - sqrt(sqrt(tan(3.141592653589793)) * (-3.154932922313467 / 0.2607832440731248) / 0.2532699192266387 * (x[1] + (x[1] - -1.0329760905609568) - -1.1123733897283157) * (sin(sin(x[1])) - -1.0439752897500634 + cos(-1.9944929251132986 * (x[1] - 3.1410124598253333))))` | 2.633315e-10 |
 | 1 | 10,000 | 100 | 5 | `sin(x[0])` | 7.125941e-34 |
@@ -2759,7 +2815,7 @@ problems = [
 | 3 | 10,000 | 500 | 10 | `(1.0 + 1.0 + x[0]² + 1.0 + x[0]/x[0] + x[0]²) - (x[1] - x[0] + x[0]) - ((x[0] + x[2] - x[1]) * -1.0) - (x[1] * x[2]/x[1] - x[0]) - x[2]/((x[0] + 1.0 - x[0] + x[0] + 1.0 - x[0]) * (x[2] - -1.0 - x[2])) + x[2] - x[1]³` | 3.445432e-29 |
 | 4 | 10,000 | 500 | 5 | `cos(exp(-8.23509920982603 - cos(x[0] + x[1]) * x[0]) + x[1] + tan(3.141592653589793) + tan(3.141592653589793) + tan(3.141592653589793) - tan(exp(-10.613659135997567))) + sqrt(-10.822240096384276 + x[0] * exp(-0.9405033382101015) + x[0] * cos(-0.9916749730176175) * exp(-0.9916749730176175)) + sin(7.871174350285515) * sqrt(7.871174350285515) * cos(exp(-7.795847756522948) - x[1]) + sqrt(-10.205488998391495) * cos(exp(-8.36973460432399) - x[1] - tan(3.141592653589793) + tan(3.141592653589793))` | 7.296206e-05 |
 | 5 | 10,000 | 500 | 5 | `(x[0] * x[0] * x[1] + x[0] * log(exp(x[1]) + x[1]) * 4.092327718778701) * sin(sin(3.141592653589793) * sqrt(log(exp(x[1]) + 3.0580787826247215 + x[1]))) * (exp(x[1] + x[1]) - (exp(6.5609367685064) - 5.939230066817374 * x[0] * exp(x[0])) / exp(cos(5.939230066817374 + x[1])) - exp(5.083623282487277) * ((5.547345449854117 * 6.5609367685064 + 4.9787556043961265 - exp(5.083623282487277) / (x[0] / 5.547345449854117)) / x[1]) - ((5.939230066817374 + 5.939230066817374) * 4.818438684907152 * 5.547345449854117 * exp(4.9787556043961265) - exp(5.083623282487277 + x[1]) - exp(x[1]) * exp(x[0]) + x[0] * x[0] * x[1] * x[0] * exp(3.0580787826247215 + x[1])) / 4.032984299426399)` | 2.511431e-21 |
-| 6 | 10,000 | 500 | 5 | `sqrt(sqrt(8.254213750314564)) * (x[1] + (-10.225547483951923 * 9.025417700203663 * 9.590571516689572 * 8.318079817950606 * x[0] * 8.254213750314564 * tan(3.141592653589793) - x[1] * tan(3.141592653589793) * -9.347525141879945 * 9.590571516689572 * -11.05365123789452 * 9.590571516689572) - (-10.225547483951923 * 8.254213750314564² * 6.944557806606948 * -9.892836400798545 * 8.254213750314564² * 6.944557806606948 * x[0] * 8.254213750314564 * tan(3.141592653589793) - -9.347525141879945 * 8.318079817950606 * tan(3.141592653589793) * -9.36898251373954 * 8.254213750314564 * x[1] * -9.570992156231187 * 8.254213750314564 * 6.944557806606948 * -9.36898251373954 * 8.254213750314564)) - (exp(-7.99007532984518) * 2.0257904697066818 * (x[0] * cos(1.0567228657700947) + x[1]) + x[0] - exp(-9.36898251373954 * 2.0257904697066818) * x[1] - x[1] * tan(3.141592653589793) * -9.347525141879945 * 8.318079817950606 * -10.225547483951923 * 9.590571516689572) / sqrt(2.074545847057164)` | 1.472670e-24 |
+| 6 | 10,000 | 500 | 5 | `sqrt(sqrt     (8.254213750314564)) * (x[1] + (-10.225547483951923 * 9.025417700203663 * 9.590571516689572 * 8.318079817950606 * x[0] * 8.254213750314564 * tan(3.141592653589793) - x[1] * tan(3.141592653589793) * -9.347525141879945 * 9.590571516689572 * -11.05365123789452 * 9.590571516689572) - (-10.225547483951923 * 8.254213750314564² * 6.944557806606948 * -9.892836400798545 * 8.254213750314564² * 6.944557806606948 * x[0] * 8.254213750314564 * tan(3.141592653589793) - -9.347525141879945 * 8.318079817950606 * tan(3.141592653589793) * -9.36898251373954 * 8.254213750314564 * x[1] * -9.570992156231187 * 8.254213750314564 * 6.944557806606948 * -9.36898251373954 * 8.254213750314564)) - (exp(-7.99007532984518) * 2.0257904697066818 * (x[0] * cos(1.0567228657700947) + x[1]) + x[0] - exp(-9.36898251373954 * 2.0257904697066818) * x[1] - x[1] * tan(3.141592653589793) * -9.347525141879945 * 8.318079817950606 * -10.225547483951923 * 9.590571516689572) / sqrt(2.074545847057164)` | 1.472670e-24 |
 | 7 | 10,000 | 500 | 10 | `(sqrt(x[1]) / ((x[1] - x[0]) / (x[1] / 384.8962882269058)) / ((-6.862665872131174 - x[1]) * 359.84784980813555) + x[1]) * log(tan(0.9724434591834495) / x[1] / (log(x[0]) * (x[1] - x[0]))) * (-332.6904684986283 - x[0] * x[1] - x[0] * x[1]) * ((-163.24116507533665 + x[1]) / 493.73440938907135) / (77.07105818030101 - x[0]) * x[0] * x[0] * (log(x[0] / x[1] / (x[1] - x[0] + 0.9724434591834495 / -261.97840724970973)) + 1.1430702439215117) * (43.26877293866266 / x[0]² / (x[1] * 223.57402074165518) + sqrt(x[1]) / ((sqrt(2.718281828459045) + x[1]) * (493.73440938907135 + x[1] * 245.95435231808204)) + x[1])` | 5.742911e+01 |
 | 8 | 10,000 | 1000 | 10 | `(x[5] * log(14171.661837288537) - exp(x[5]) * cos(x[5]) * exp(x[5] + x[5]) + exp(x[5] + x[3]) - (x[5] + 5.22424095200899 + 4.919255252102357) + exp(x[5] + 4.919255252102357) / exp(cos(x[5])) + (cos(x[5]) + x[5]) * log(15361.32198836566) - log(-5373.432650868888 * -20631.50274792795) * exp(x[5] + x[4]) + exp(x[5] - x[4]) * (x[4] - 4.671905536726776 + x[4] - 4.982397747782802) + x[5] + x[5] + exp(x[5] + x[3])) / exp(x[5]) + exp(x[5] + x[5] + 263.1009235265916 / (-4534.039441136765 - (x[5] + x[3]) * exp(x[5])))` | 2.902945e+04 |
 
