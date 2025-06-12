@@ -23,7 +23,7 @@ header-includes:
 ## Laboratory 1: Set Cover Problem
 
 **Objective:**  
-To implement and compare different hill climbing algorithms for solving the Set Cover Problem, with a focus on finding an optimal balance between solution quality and computational efficiency.
+To implement and compare different hill climbing algorithms for solving the Set Cover Problem
 
 ### Activities Performed
 - Implemented multiple variations of hill climbing algorithms:
@@ -34,7 +34,7 @@ To implement and compare different hill climbing algorithms for solving the Set 
   - Improved RHCM v2 with maximum coverage preservation
 - Tested each algorithm on six problem instances with varying parameters
 - Visualized performance using fitness progression plots
-- Analyzed convergence behavior and solution quality
+- Analyzed solution quality
 - Compared algorithms to identify the most effective approach
 
 ### Problem Definition
@@ -84,6 +84,34 @@ def fitness(solution, sets, costs):
 - `valid()`: Checks if a solution covers all elements in the universe
 - `cost()`: Calculates the total cost of a solution (decorated with a counter to track function calls)
 - `fitness()`: Returns a tuple combining validity and negative cost (negative because we maximize fitness but minimize cost)
+
+#### Mutation Operations
+```python
+def tweak(solution, num_sets, rng):
+    new_solution = solution.copy()
+    i = rng.integers(0, num_sets)
+    new_solution[i] = not new_solution[i]
+    return new_solution
+
+def multiple_mutation(solution, num_sets, rng):
+    mask = rng.random(num_sets) < 0.01
+    new_solution = np.logical_xor(solution, mask)
+    return new_solution
+
+def multiple_mutation_improve(solution, strength, rng, num_sets):
+    mask = rng.random(num_sets) < strength
+    if not np.any(mask):
+        mask[np.random.randint(num_sets)] = True
+    
+    new_solution = np.logical_xor(solution, mask)
+    return new_solution
+
+```
+**Explanation:**  
+
+- `tweak()`: Performs a single-bit mutation by flipping exactly one randomly selected bit in the solution. This creates small local changes for fine-tuning.
+- `multiple_mutation()`: Performs a heavy mutation where each bit has a 1% probability of being flipped. This allows for larger jumps in the solution space and helps escape local optima.
+- `multiple_mutation_improve()`: An enhanced version of multiple mutation with adaptive strength. The mutation probability is controlled by the `strength` parameter, and it guarantees at least one bit is flipped to ensure the solution changes.
 
 #### Basic Hill Climber
 ```python
@@ -321,10 +349,9 @@ The algorithms were tested on six different problem instances with varying param
 Performance was measured in terms of:
 
 - Solution validity (coverage of all elements)
-- Solution cost (sum of costs of selected sets)
 - Convergence behavior (fitness improvement over iterations)
 
-The **Improved RHCM v2** algorithm produced the best results (comparable with the Improved RHCM). Key factors contributing to its success:
+The **Improved RHCM v2** algorithm produced the best results. Key factors contributing to its success:
 
 1. **Adaptive mutation strength**: The dynamic adjustment of mutation strength based on recent performance allows the algorithm to balance exploration and exploitation effectively.
 
@@ -388,7 +415,7 @@ Good job!!!"
 ### Reflections after laboratory
 
 While I initially selected Improved RHCM v2 as the best algorithm based on the experimental results, further reflection revealed an important insight: the approach of always preserving the set with maximum coverage may not actually be optimal for all instances. A set that covers many elements might also have a disproportionately high cost, whereas multiple smaller sets might cover the same elements at a lower total cost.
-In reality, the Improved RHCM v2 is not a significant improvement over the basic Improved RHCM, which achieved almost identical results without making assumptions about which sets should always be included. The original adaptive strength mechanism in Improved RHCM provides sufficient flexibility to explore the solution space effectively without explicitly forcing the inclusion of specific sets.
+In reality, the Improved RHCM v2 is not a significant improvement over the basic Improved RHCM(It's improved beacuse i used more iteration 20000 vs 10000), which achieved almost identical results without making assumptions about which sets should always be included. The original adaptive strength mechanism in Improved RHCM provides sufficient flexibility to explore the solution space effectively without explicitly forcing the inclusion of specific sets.
 
 
 ## Laboratory 2: Traveling Salesman Problem
@@ -1056,6 +1083,7 @@ To implement an efficient Genetic Programming (GP) algorithm for symbolic regres
 - Designed and implemented a complete tree-based Genetic Programming framework
 - Created an expression representation system with function and terminal nodes
 - Developed advanced genetic operators (crossover, mutation, selection)
+- Implemented Semantic Fitness Sharing and solution aging for maintaining population diversity
 - Implemented an island model for maintaining population diversity
 - Added adaptive mutation rates to balance exploration and exploitation
 - Incorporated symbolic simplification of expressions
@@ -1064,12 +1092,17 @@ To implement an efficient Genetic Programming (GP) algorithm for symbolic regres
 
 
 ### Problem Definition
+
 Symbolic regression involves finding a mathematical expression that best fits a given dataset of input-output pairs, without assuming a specific model structure. Formally:
 
 - Given a dataset of observations (X, y)
 - Find a symbolic expression f such that f(X) approximates y as closely as possible
 
 ### Summary of the main points behind the algorithm
+
+#### Function and Terminal Weighting
+
+The algorithm implements a weighting system that allows for strategic biasing of the search process by assigning different selection probabilities to functions and terminals during tree generation. This mechanism enables the algorithm to focus exploration on more promising mathematical components while reducing the likelihood of selecting less relevant operations for specific problem domains.
 
 #### Individual Representation
 
@@ -1139,6 +1172,8 @@ Periodically, migration occurs where individuals move from one island to another
 
 
 ### Functions Developed
+
+This section provides an overview of the key functions and classes developed for the Genetic Programming symbolic regression algorithm.
 
 #### Expression Tree Classes
 
@@ -1241,6 +1276,15 @@ The `ExpressionTree` class encapsulates a complete mathematical expression repre
 def grow_tree(config: GPConfig, max_depth: int, min_depth: int = 1, current_depth: int = 0) -> Node:
     """
     Grow' method for generating a tree with variable depth
+    
+    Args:
+        config: GP configuration
+        max_depth: Maximum depth of the tree
+        min_depth: Minimum depth of the tree
+        current_depth: Current depth of the node
+        
+    Returns:
+        Root node of the generated tree
     """
     # If we are at the maximum depth, we can only create terminal nodes
     if current_depth >= max_depth:
@@ -1253,18 +1297,14 @@ def grow_tree(config: GPConfig, max_depth: int, min_depth: int = 1, current_dept
     # If we have not yet reached the minimum depth, we only create function nodes
     if current_depth < min_depth:
         function_info = config.get_random_function()
-        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) 
-                   for _ in range(function_info['arity'])]
-        return FunctionNode(function_info['function'], function_info['arity'], 
-                           function_info['symbol'], children)
+        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) for _ in range(function_info['arity'])]
+        return FunctionNode(function_info['function'], function_info['arity'], function_info['symbol'], children)
     
     # Otherwise, we randomly choose between functions and terminals
     if random.random() < 0.5:  # 50% probability for functions or terminals
         function_info = config.get_random_function()
-        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) 
-                   for _ in range(function_info['arity'])]
-        return FunctionNode(function_info['function'], function_info['arity'], 
-                           function_info['symbol'], children)
+        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) for _ in range(function_info['arity'])]
+        return FunctionNode(function_info['function'], function_info['arity'], function_info['symbol'], children)
     else:
         terminal_info = config.get_random_terminal()
         if terminal_info['is_variable']:
@@ -1321,13 +1361,21 @@ The `full_tree` method generates a maximally dense expression tree with all leaf
 ```python
 def ramped_half_and_half(config: GPConfig, min_depth: int, max_depth: int) -> ExpressionTree:
     """
-    'Ramped half-and-half' initialisation method
+    Ramped half-and-half' initialisation method
     Combines grow and full for greater diversity
+    
+    Args:
+        config: GP configuration
+        min_depth: Minimum tree depth
+        max_depth: Maximum depth of trees
+        
+    Returns:
+        A new expression tree
     """
     # Choose a random depth between min_depth and max_depth
     depth = random.randint(min_depth, max_depth)
     
-    # Choose randomly between 'grow' and 'full'
+    # Choose randomly between ‘grow’ and ‘full’.
     if random.random() < 0.5:
         root = grow_tree(config, depth, min_depth)
     else:
@@ -1388,6 +1436,141 @@ These protected mathematical functions ensure robustness during expression evalu
 - `safe_tan` prevents extreme outputs by clipping the results to avoid overflow
 
 This approach allows the evolutionary process to explore expressions without being derailed by mathematical errors, even during early generations when random expressions might contain problematic operations.
+
+
+#### Weighted Function and Terminal Set Construction
+
+```python
+def create_function_set(use_trig: bool = True, use_exp_log: bool = True) -> List[Dict[str, Any]]:
+    """
+    Creates a set of functions to be used in the expression tree.
+    
+    Args:
+        use_trig: Whether to include trigonometric functions.
+        use_exp_log: Whether to include exponential and logarithmic functions.
+        
+    Returns:
+        List of dictionaries, each containing:
+            - function: the Python function to call.
+            - arity: the number of arguments required.
+            - symbol: the symbol for display.
+            - weight: selection weight (relative probability).
+    """
+    # Basic arithmetic functions (always included)
+    functions = [
+        {'function': np.add, 'arity': 2, 'symbol': '+', 'weight': 1.0},
+        {'function': np.subtract, 'arity': 2, 'symbol': '-', 'weight': 1.0},
+        {'function': np.multiply, 'arity': 2, 'symbol': '*', 'weight': 1.0},
+        {'function': safe_div, 'arity': 2, 'symbol': '/', 'weight': 0.7},  # Lower weight for division
+    ]
+    
+    # Trigonometric functions (optional)
+    if use_trig:
+        functions.extend([
+            {'function': safe_sin, 'arity': 1, 'symbol': 'sin', 'weight': 0.6},
+            {'function': safe_cos, 'arity': 1, 'symbol': 'cos', 'weight': 0.6},
+            {'function': safe_tan, 'arity': 1, 'symbol': 'tan', 'weight': 0.5},  
+        ])
+    
+    # Exponential and logarithmic functions (optional)
+    if use_exp_log:
+        functions.extend([
+            {'function': safe_exp, 'arity': 1, 'symbol': 'exp', 'weight': 0.4},
+            {'function': safe_log, 'arity': 1, 'symbol': 'log', 'weight': 0.5},
+            {'function': safe_sqrt, 'arity': 1, 'symbol': 'sqrt', 'weight': 0.6},
+        ])
+    
+    return functions
+
+def create_variable_terminals(n_features: int, variable_weight: float = 1.0) -> List[Dict[str, Any]]:
+    """
+    Create terminals for input variables
+    
+    Args:
+        n_features: Number of input variables
+        variable_weight: Weight assigned to the variables
+        
+    Returns:
+        List of dictionaries for variable terminals
+    """
+    return [
+        {
+            'is_variable': True, 
+            'var_index': i, 
+            'weight': variable_weight
+        } for i in range(n_features)
+    ]
+
+def create_constant_terminals(const_range: float, n_constants: int = 10, 
+                             standard_weight: float = 0.3,
+                             zero_weight: float = 0.5,
+                             one_weight: float = 0.5,
+                             minus_one_weight: float = 0.3,
+                             pi_weight: float = 0.2,
+                             e_weight: float = 0.2) -> List[Dict[str, Any]]:
+    """
+    Creates terminals for constants
+    
+    Args:
+        const_range: Range for random constants
+        n_constants: Number of pre-generated constants
+        standard_weight: Weight for random constants
+        zero_weight: Weight for the constant 0
+        one_weight: Weight for the constant 1
+        minus_one_weight: Weight for the constant -1
+        pi_weight: Weight for the constant π
+        e_weight: Weight for the constant e
+        
+    Returns:
+        List of dictionaries for constant terminals
+    """
+    # Important fixed constants
+    fixed_constants = [
+        {'is_variable': False, 'value': 0.0, 'weight': zero_weight},
+        {'is_variable': False, 'value': 1.0, 'weight': one_weight},
+        {'is_variable': False, 'value': -1.0, 'weight': minus_one_weight},
+        {'is_variable': False, 'value': np.pi, 'weight': pi_weight},
+        {'is_variable': False, 'value': np.e, 'weight': e_weight},
+    ]
+    
+    # Random constants pre-generated
+    random_constants = [
+        {
+            'is_variable': False, 
+            'value': random.uniform(-const_range, const_range) if abs(random.uniform(-const_range, const_range)) > 1e-8 else 1.0,
+            'weight': standard_weight
+        } for _ in range(n_constants)
+    ]
+    
+    return fixed_constants + random_constants
+
+def generate_ephemeral_constant(const_range: float) -> float:
+    """
+    Generates an ephemeral random constant
+    avoiding values too close to zero
+    """
+    value = random.uniform(-const_range, const_range)
+    # Avoid values too close to zero
+    if abs(value) < 1e-8:
+        if random.random() < 0.5:
+            value = 1e-8
+        else:
+            value = -1e-8
+    return value
+```
+
+**Explanation:**  
+
+- `create_function_set` assigns higher weights to basic arithmetic operations (1.0) due to their fundamental importance, while division receives a reduced weight (0.7) to account for potential numerical instability
+- Trigonometric functions receive moderate weights (0.5-0.6) making them suitable for problems with periodic characteristics, while maintaining lower probability than basic operations
+- Exponential and logarithmic functions are assigned conservative weights (0.4-0.5) as they are typically relevant to specialized problem domains
+(This are the deafult weight)
+- `create_variable_terminals` allows uniform or custom weighting of input variables, enabling domain knowledge to guide the search toward more significant features
+- `create_constant_terminals` implements a stratified weighting strategy that distinguishes between mathematically important constants (0, 1, π, e) and arbitrary numerical values
+- Important mathematical constants receive specialized weights reflecting their prevalence in natural expressions, while random constants receive uniform lower weights to maintain diversity
+- `generate_ephemeral_constant` ensures numerical stability by avoiding values too close to zero, preventing potential mathematical errors during evolution
+
+This weighting mechanism influences all phases of the algorithm, from initial population generation to crossover and mutation operations, allowing the search process to naturally favor problem-appropriate mathematical constructs .
 
 
 #### Fitness Evaluation
@@ -1881,10 +2064,6 @@ The `Island` class implements the island model for population distribution in ge
 
 4. The adaptive mutation mechanism enables each island to independently shift between exploration and exploitation based on its own evolutionary progress, creating diversity in search strategies across islands.
 
-
-
-
-
 ```python
     def evolve(self, X: np.ndarray, y: np.ndarray, generation: int,
                use_adaptive_mutation: bool = False,
@@ -1915,6 +2094,8 @@ The `Island` class implements the island model for population distribution in ge
         
         # Update the best solution
         current_best = min(self.population, key=lambda x: float('inf') if x.adjusted_fitness is None else x.adjusted_fitness)
+       
+    
         if current_best.adjusted_fitness < self.best_fitness:
             self.best_individual = current_best.copy()
             self.best_fitness = current_best.adjusted_fitness
@@ -2180,7 +2361,6 @@ The `sympy_simplify_expression` function uses symbolic mathematics to transform 
 
 
 
-
 #### GP Configuration
 
 ```python
@@ -2252,10 +2432,6 @@ The `GPConfig` class centralizes all configuration parameters for the Genetic Pr
 3. Controls tree size constraints (min/max depth, maximum size) to prevent bloat
 4. Defines evolutionary parameters (population size, tournament size, genetic operator probabilities)
 5. Sets bloat control parameters to balance accuracy and complexity
-
-
-
-
 
 #### Main Genetic Programming Algorithm
 
@@ -2361,6 +2537,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
         'avg_fitness': [],
         'avg_size': [],
         'best_size': []
+        #'diversity': []
     }
     
     # Principal loop of the algorithm
@@ -2380,7 +2557,14 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
             all_individuals = []
             for island in islands:
                 all_individuals.extend(island.population)
-         
+            
+            # Calculate semantic diversity occasionally
+            #if generation % 5 == 0 or generation == 0:  # First gen and every 5 gens
+            #    diversity = calculate_semantic_diversity(all_individuals, X_sample)
+            #else:
+            #   # Use previous value
+            #    diversity = stats['diversity'][-1] if stats['diversity'] else 0
+            
             # Periodic migration
             if (generation + 1) % migration_interval == 0:
                     migration(islands, migration_rate=migration_rate, X=X, y=y, X_sample=X_sample)
@@ -2406,7 +2590,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
                original_mutation_prob = config.mutation_prob
             
             # Adjust mutation based on stagnation
-            if generations_without_improvement > 0:
+            if generations_without_improvement > 5:
                 # Increase mutation strength
                 current_mutation_strength = min(max_mutation_strength, 
                                               current_mutation_strength * (1 + adaptation_rate))
@@ -2432,7 +2616,13 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
             avg_fitness = np.mean([tree.adjusted_fitness for tree in population if tree.adjusted_fitness != float('inf')])
             avg_size = np.mean([tree.get_complexity() for tree in population])
             
-
+            # Calculate semantic diversity occasionally
+            #if generation % 5 == 0 or generation == 0:  # First gen and every 5 gens
+            #    diversity = calculate_semantic_diversity(population, X_sample)
+            #else:
+                # Use previous value
+            #    diversity = stats['diversity'][-1] if stats['diversity'] else 0
+        
             if use_adaptive_mutation:
                 config.mutation_prob = original_mutation_prob
 
@@ -2458,7 +2648,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
         #stats['diversity'].append(diversity)
         
         # Generation log
-        if generation % 5 == 0 or generation == config.generations - 1:
+        if generation % 10 == 0 or generation == config.generations - 1:
            print(f"Generation {generation}, Best Fitness: {best_fitness}")
         
        

@@ -8,6 +8,7 @@ To implement an efficient Genetic Programming (GP) algorithm for symbolic regres
 - Designed and implemented a complete tree-based Genetic Programming framework
 - Created an expression representation system with function and terminal nodes
 - Developed advanced genetic operators (crossover, mutation, selection)
+- Implemented Semantic Fitness Sharing and solution aging for maintaining population diversity
 - Implemented an island model for maintaining population diversity
 - Added adaptive mutation rates to balance exploration and exploitation
 - Incorporated symbolic simplification of expressions
@@ -16,11 +17,17 @@ To implement an efficient Genetic Programming (GP) algorithm for symbolic regres
 
 
 ### Problem Definition
+
 Symbolic regression involves finding a mathematical expression that best fits a given dataset of input-output pairs, without assuming a specific model structure. Formally:
+
 - Given a dataset of observations (X, y)
 - Find a symbolic expression f such that f(X) approximates y as closely as possible
 
 ### Summary of the main points behind the algorithm
+
+#### Function and Terminal Weighting
+
+The algorithm implements a weighting system that allows for strategic biasing of the search process by assigning different selection probabilities to functions and terminals during tree generation. This mechanism enables the algorithm to focus exploration on more promising mathematical components while reducing the likelihood of selecting less relevant operations for specific problem domains.
 
 #### Individual Representation
 
@@ -40,7 +47,7 @@ The semantic distance between two expressions is calculated by evaluating them o
 semantic_distance(tree1, tree2) = mean((normalized_output1 - normalized_output2)²)
 ```
 
-Fitness sharing penalizes individuals that behave similarly to others in the population. For each individual, a sharing factor is calculated based on how many other expressions produce similar outputs and how close these outputs are. This factor increases as more semantically similar neighbors are found within a specified radius (σ).
+Fitness sharing penalizes individuals that behave similarly to others in the population. For each individual, a sharing factor is calculated based on how many other expressions produce similar outputs and how close these outputs are. This factor increases as more semantically similar neighbors are found within a specified radius (sigma).
 
 The adjusted fitness is then calculated by multiplying the original fitness by this sharing factor:
 
@@ -91,6 +98,8 @@ Periodically, migration occurs where individuals move from one island to another
 
 ### Functions Developed
 
+This section provides an overview of the key functions and classes developed for the Genetic Programming symbolic regression algorithm.
+
 #### Expression Tree Classes
 
 ```python
@@ -128,6 +137,7 @@ class FunctionNode(Node):
 
 **Explanation:**  
 The `FunctionNode` class represents operations in the expression tree. Each function node stores:
+
 - The actual mathematical function to be applied (e.g., numpy's add, subtract)
 - The arity (number of arguments) the function requires
 - A symbolic representation for display (e.g., '+', '-', '*')
@@ -191,6 +201,15 @@ The `ExpressionTree` class encapsulates a complete mathematical expression repre
 def grow_tree(config: GPConfig, max_depth: int, min_depth: int = 1, current_depth: int = 0) -> Node:
     """
     Grow' method for generating a tree with variable depth
+    
+    Args:
+        config: GP configuration
+        max_depth: Maximum depth of the tree
+        min_depth: Minimum depth of the tree
+        current_depth: Current depth of the node
+        
+    Returns:
+        Root node of the generated tree
     """
     # If we are at the maximum depth, we can only create terminal nodes
     if current_depth >= max_depth:
@@ -203,18 +222,14 @@ def grow_tree(config: GPConfig, max_depth: int, min_depth: int = 1, current_dept
     # If we have not yet reached the minimum depth, we only create function nodes
     if current_depth < min_depth:
         function_info = config.get_random_function()
-        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) 
-                   for _ in range(function_info['arity'])]
-        return FunctionNode(function_info['function'], function_info['arity'], 
-                           function_info['symbol'], children)
+        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) for _ in range(function_info['arity'])]
+        return FunctionNode(function_info['function'], function_info['arity'], function_info['symbol'], children)
     
     # Otherwise, we randomly choose between functions and terminals
     if random.random() < 0.5:  # 50% probability for functions or terminals
         function_info = config.get_random_function()
-        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) 
-                   for _ in range(function_info['arity'])]
-        return FunctionNode(function_info['function'], function_info['arity'], 
-                           function_info['symbol'], children)
+        children = [grow_tree(config, max_depth, min_depth, current_depth + 1) for _ in range(function_info['arity'])]
+        return FunctionNode(function_info['function'], function_info['arity'], function_info['symbol'], children)
     else:
         terminal_info = config.get_random_terminal()
         if terminal_info['is_variable']:
@@ -225,6 +240,7 @@ def grow_tree(config: GPConfig, max_depth: int, min_depth: int = 1, current_dept
 
 **Explanation:**  
 The `grow_tree` method generates expression trees with variable shapes. It follows these rules:
+
 1. At the maximum depth, only terminal nodes (variables or constants) are created
 2. Before the minimum depth, only function nodes are created to ensure sufficient complexity
 3. Between min_depth and max_depth, nodes are created with a 50% probability of being a function or terminal
@@ -270,13 +286,21 @@ The `full_tree` method generates a maximally dense expression tree with all leaf
 ```python
 def ramped_half_and_half(config: GPConfig, min_depth: int, max_depth: int) -> ExpressionTree:
     """
-    'Ramped half-and-half' initialisation method
+    Ramped half-and-half' initialisation method
     Combines grow and full for greater diversity
+    
+    Args:
+        config: GP configuration
+        min_depth: Minimum tree depth
+        max_depth: Maximum depth of trees
+        
+    Returns:
+        A new expression tree
     """
     # Choose a random depth between min_depth and max_depth
     depth = random.randint(min_depth, max_depth)
     
-    # Choose randomly between 'grow' and 'full'
+    # Choose randomly between ‘grow’ and ‘full’.
     if random.random() < 0.5:
         root = grow_tree(config, depth, min_depth)
     else:
@@ -287,6 +311,7 @@ def ramped_half_and_half(config: GPConfig, min_depth: int, max_depth: int) -> Ex
 
 **Explanation:**  
 The `ramped_half_and_half` method is the primary initialization technique used by the algorithm. It:
+
 1. Randomly selects a depth value from a range (typically 2-6)
 2. Randomly chooses between the 'grow' and 'full' methods
 3. Wraps the resulting tree in an ExpressionTree object
@@ -327,6 +352,7 @@ def safe_tan(a: np.ndarray) -> np.ndarray:
 
 **Explanation:**  
 These protected mathematical functions ensure robustness during expression evaluation by handling edge cases gracefully:
+
 - `safe_div` avoids division by zero by returning 1 when the denominator is near zero
 - `safe_log` handles negative and zero inputs by taking the absolute value and returning 0 for values near zero
 - `safe_sqrt` accepts negative inputs by taking the absolute value first
@@ -335,6 +361,141 @@ These protected mathematical functions ensure robustness during expression evalu
 - `safe_tan` prevents extreme outputs by clipping the results to avoid overflow
 
 This approach allows the evolutionary process to explore expressions without being derailed by mathematical errors, even during early generations when random expressions might contain problematic operations.
+
+
+#### Weighted Function and Terminal Set Construction
+
+```python
+def create_function_set(use_trig: bool = True, use_exp_log: bool = True) -> List[Dict[str, Any]]:
+    """
+    Creates a set of functions to be used in the expression tree.
+    
+    Args:
+        use_trig: Whether to include trigonometric functions.
+        use_exp_log: Whether to include exponential and logarithmic functions.
+        
+    Returns:
+        List of dictionaries, each containing:
+            - function: the Python function to call.
+            - arity: the number of arguments required.
+            - symbol: the symbol for display.
+            - weight: selection weight (relative probability).
+    """
+    # Basic arithmetic functions (always included)
+    functions = [
+        {'function': np.add, 'arity': 2, 'symbol': '+', 'weight': 1.0},
+        {'function': np.subtract, 'arity': 2, 'symbol': '-', 'weight': 1.0},
+        {'function': np.multiply, 'arity': 2, 'symbol': '*', 'weight': 1.0},
+        {'function': safe_div, 'arity': 2, 'symbol': '/', 'weight': 0.7},  # Lower weight for division
+    ]
+    
+    # Trigonometric functions (optional)
+    if use_trig:
+        functions.extend([
+            {'function': safe_sin, 'arity': 1, 'symbol': 'sin', 'weight': 0.6},
+            {'function': safe_cos, 'arity': 1, 'symbol': 'cos', 'weight': 0.6},
+            {'function': safe_tan, 'arity': 1, 'symbol': 'tan', 'weight': 0.5},  
+        ])
+    
+    # Exponential and logarithmic functions (optional)
+    if use_exp_log:
+        functions.extend([
+            {'function': safe_exp, 'arity': 1, 'symbol': 'exp', 'weight': 0.4},
+            {'function': safe_log, 'arity': 1, 'symbol': 'log', 'weight': 0.5},
+            {'function': safe_sqrt, 'arity': 1, 'symbol': 'sqrt', 'weight': 0.6},
+        ])
+    
+    return functions
+
+def create_variable_terminals(n_features: int, variable_weight: float = 1.0) -> List[Dict[str, Any]]:
+    """
+    Create terminals for input variables
+    
+    Args:
+        n_features: Number of input variables
+        variable_weight: Weight assigned to the variables
+        
+    Returns:
+        List of dictionaries for variable terminals
+    """
+    return [
+        {
+            'is_variable': True, 
+            'var_index': i, 
+            'weight': variable_weight
+        } for i in range(n_features)
+    ]
+
+def create_constant_terminals(const_range: float, n_constants: int = 10, 
+                             standard_weight: float = 0.3,
+                             zero_weight: float = 0.5,
+                             one_weight: float = 0.5,
+                             minus_one_weight: float = 0.3,
+                             pi_weight: float = 0.2,
+                             e_weight: float = 0.2) -> List[Dict[str, Any]]:
+    """
+    Creates terminals for constants
+    
+    Args:
+        const_range: Range for random constants
+        n_constants: Number of pre-generated constants
+        standard_weight: Weight for random constants
+        zero_weight: Weight for the constant 0
+        one_weight: Weight for the constant 1
+        minus_one_weight: Weight for the constant -1
+        pi_weight: Weight for the constant π
+        e_weight: Weight for the constant e
+        
+    Returns:
+        List of dictionaries for constant terminals
+    """
+    # Important fixed constants
+    fixed_constants = [
+        {'is_variable': False, 'value': 0.0, 'weight': zero_weight},
+        {'is_variable': False, 'value': 1.0, 'weight': one_weight},
+        {'is_variable': False, 'value': -1.0, 'weight': minus_one_weight},
+        {'is_variable': False, 'value': np.pi, 'weight': pi_weight},
+        {'is_variable': False, 'value': np.e, 'weight': e_weight},
+    ]
+    
+    # Random constants pre-generated
+    random_constants = [
+        {
+            'is_variable': False, 
+            'value': random.uniform(-const_range, const_range) if abs(random.uniform(-const_range, const_range)) > 1e-8 else 1.0,
+            'weight': standard_weight
+        } for _ in range(n_constants)
+    ]
+    
+    return fixed_constants + random_constants
+
+def generate_ephemeral_constant(const_range: float) -> float:
+    """
+    Generates an ephemeral random constant
+    avoiding values too close to zero
+    """
+    value = random.uniform(-const_range, const_range)
+    # Avoid values too close to zero
+    if abs(value) < 1e-8:
+        if random.random() < 0.5:
+            value = 1e-8
+        else:
+            value = -1e-8
+    return value
+```
+
+**Explanation:**  
+
+- `create_function_set` assigns higher weights to basic arithmetic operations (1.0) due to their fundamental importance, while division receives a reduced weight (0.7) to account for potential numerical instability
+- Trigonometric functions receive moderate weights (0.5-0.6) making them suitable for problems with periodic characteristics, while maintaining lower probability than basic operations
+- Exponential and logarithmic functions are assigned conservative weights (0.4-0.5) as they are typically relevant to specialized problem domains
+(This are the deafult weight)
+- `create_variable_terminals` allows uniform or custom weighting of input variables, enabling domain knowledge to guide the search toward more significant features
+- `create_constant_terminals` implements a stratified weighting strategy that distinguishes between mathematically important constants (0, 1, π, e) and arbitrary numerical values
+- Important mathematical constants receive specialized weights reflecting their prevalence in natural expressions, while random constants receive uniform lower weights to maintain diversity
+- `generate_ephemeral_constant` ensures numerical stability by avoiding values too close to zero, preventing potential mathematical errors during evolution
+
+This weighting mechanism influences all phases of the algorithm, from initial population generation to crossover and mutation operations, allowing the search process to naturally favor problem-appropriate mathematical constructs .
 
 
 #### Fitness Evaluation
@@ -380,6 +541,7 @@ def calculate_fitness(tree: ExpressionTree, X: np.ndarray, y: np.ndarray,
 
 **Explanation:**  
 The `calculate_fitness` function evaluates how well an expression fits the training data:
+
 1. It evaluates the expression tree on the input features X
 2. Handles invalid outputs (NaN or infinite values) by assigning the worst possible fitness
 3. Calculates the mean square error (MSE) between predictions and targets
@@ -458,10 +620,11 @@ def apply_semantic_fitness_sharing(population: List[ExpressionTree], X_sample: n
 
 **Explanation:**  
 The `apply_semantic_fitness_sharing` function promotes behavioral diversity in the population:
+
 1. It evaluates and normalizes all expressions on a sample of the input data
 2. Calculates the semantic distance (difference in outputs) between each pair of individuals
 3. Increases the fitness (worse) of expressions that produce similar outputs to others
-4. Uses a linear sharing kernel with a radius parameter σ to control the effect strength
+4. Uses a linear sharing kernel with a radius parameter sigma to control the effect strength
 
 #### Selection Method
 ```python
@@ -495,6 +658,7 @@ def tournament_selection(population: List[ExpressionTree], tournament_size: int,
 
 **Explanation:** 
 The `tournament_selection` function works by:
+
 1. Randomly sampling a subset of individuals (the "tournament participants") from the population
 2. Selecting the individual with the best fitness (lowest value in this minimization problem) from this subset
 3. Optionally(always true) using diversity-adjusted fitness instead of raw fitness to promote diversity
@@ -569,6 +733,7 @@ def select_parents(population: List[ExpressionTree], config: GPConfig,
 
 **Explanation:** 
 The `select_parents` function combines multiple selection strategies to choose parent pairs for reproduction:
+
 1. It employs a probabilistic approach, using tournament selection with diversity-adjusted fitness 90% of the time
 2. It uses age-weighted selection 10% of the time to promote genetic diversity
 3. It attempts to ensure the parents are different individuals (up to 5 tries)
@@ -643,6 +808,7 @@ def subtree_crossover(parent1: ExpressionTree, parent2: ExpressionTree,
 
 **Explanation:** 
 The `subtree_crossover` function implements the primary recombination operator for tree-based genetic programming:
+
 1. It randomly selects crossover points in both parent trees
 2. Exchanges subtrees between parents to create two new offspring
 3. Verifies that the resulting trees don't exceed the maximum allowed depth
@@ -700,6 +866,7 @@ def subtree_mutation(tree: ExpressionTree, config: GPConfig,
 
 **Explanation:** 
 The `subtree_mutation` function introduces larger-scale changes to an expression:
+
 1. It randomly selects a node in the tree as the mutation point
 2. Calculates the allowable depth for a replacement subtree based on the node's position and maximum depth constraint
 3. Generates a completely new random subtree using the grow method
@@ -784,6 +951,7 @@ def point_mutation(tree: ExpressionTree, config: GPConfig) -> ExpressionTree:
 
 **Explanation:** 
 The `point_mutation` function implements a more conservative mutation operator that preserves most of the tree structure:
+
 1. It randomly selects a single node in the tree as the mutation point
 2. Applies different mutation strategies based on the node type:
    - For function nodes, it replaces the function with another compatible one of the same arity
@@ -821,10 +989,6 @@ The `Island` class implements the island model for population distribution in ge
 
 4. The adaptive mutation mechanism enables each island to independently shift between exploration and exploitation based on its own evolutionary progress, creating diversity in search strategies across islands.
 
-
-
-
-
 ```python
     def evolve(self, X: np.ndarray, y: np.ndarray, generation: int,
                use_adaptive_mutation: bool = False,
@@ -855,6 +1019,8 @@ The `Island` class implements the island model for population distribution in ge
         
         # Update the best solution
         current_best = min(self.population, key=lambda x: float('inf') if x.adjusted_fitness is None else x.adjusted_fitness)
+       
+    
         if current_best.adjusted_fitness < self.best_fitness:
             self.best_individual = current_best.copy()
             self.best_fitness = current_best.adjusted_fitness
@@ -885,6 +1051,7 @@ The `Island` class implements the island model for population distribution in ge
 
 **Explanation:**  
 The `evolve` method handles the progression of an island's population through one generation:
+
 1. It temporarily adjusts the mutation probability based on the island's adaptive mutation strength
 2. Applies genetic operators (selection, crossover, mutation) to create a new population
 3. Updates the island's best solution if an improvement is found
@@ -1062,6 +1229,7 @@ def migration(islands: List[Island], migration_rate: float = 0.2, X: np.ndarray 
 
 **Explanation:**  
 The `migration` function manages the periodic exchange of individuals between islands:
+
 1. It first calculates the semantic diversity of each island's population
 2. For each island pair, it determines the appropriate mutation strength based on diversity relationship
    - Uses lower mutation when moving from more diverse to less diverse islands
@@ -1108,12 +1276,12 @@ def sympy_simplify_expression(expression: str) -> str:
 
 **Explanation:**  
 The `sympy_simplify_expression` function uses symbolic mathematics to transform evolved expressions into more human-readable forms:
+
 1. It converts the expression from the GP's format to sympy's format
 2. Creates symbolic variables for each input feature
 3. Parses and simplifies the expression using sympy's powerful simplification engine
 4. Checks for problematic symbols or complex numbers and falls back to basic simplification if needed
 5. Converts the result back to the original format
-
 
 
 
@@ -1183,15 +1351,12 @@ class GPConfig:
 
 **Explanation:**  
 The `GPConfig` class centralizes all configuration parameters for the Genetic Programming algorithm:
+
 1. It manages the set of available functions (arithmetic, trigonometric, exponential) and terminals (variables, constants)
 2. Allows custom weighting of functions and terminals to bias the search process
 3. Controls tree size constraints (min/max depth, maximum size) to prevent bloat
 4. Defines evolutionary parameters (population size, tournament size, genetic operator probabilities)
 5. Sets bloat control parameters to balance accuracy and complexity
-
-
-
-
 
 #### Main Genetic Programming Algorithm
 
@@ -1297,6 +1462,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
         'avg_fitness': [],
         'avg_size': [],
         'best_size': []
+        #'diversity': []
     }
     
     # Principal loop of the algorithm
@@ -1316,7 +1482,14 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
             all_individuals = []
             for island in islands:
                 all_individuals.extend(island.population)
-         
+            
+            # Calculate semantic diversity occasionally
+            #if generation % 5 == 0 or generation == 0:  # First gen and every 5 gens
+            #    diversity = calculate_semantic_diversity(all_individuals, X_sample)
+            #else:
+            #   # Use previous value
+            #    diversity = stats['diversity'][-1] if stats['diversity'] else 0
+            
             # Periodic migration
             if (generation + 1) % migration_interval == 0:
                     migration(islands, migration_rate=migration_rate, X=X, y=y, X_sample=X_sample)
@@ -1342,7 +1515,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
                original_mutation_prob = config.mutation_prob
             
             # Adjust mutation based on stagnation
-            if generations_without_improvement > 0:
+            if generations_without_improvement > 5:
                 # Increase mutation strength
                 current_mutation_strength = min(max_mutation_strength, 
                                               current_mutation_strength * (1 + adaptation_rate))
@@ -1368,7 +1541,13 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
             avg_fitness = np.mean([tree.adjusted_fitness for tree in population if tree.adjusted_fitness != float('inf')])
             avg_size = np.mean([tree.get_complexity() for tree in population])
             
-
+            # Calculate semantic diversity occasionally
+            #if generation % 5 == 0 or generation == 0:  # First gen and every 5 gens
+            #    diversity = calculate_semantic_diversity(population, X_sample)
+            #else:
+                # Use previous value
+            #    diversity = stats['diversity'][-1] if stats['diversity'] else 0
+        
             if use_adaptive_mutation:
                 config.mutation_prob = original_mutation_prob
 
@@ -1394,7 +1573,7 @@ def genetic_programming(X: np.ndarray, y: np.ndarray, config: GPConfig,
         #stats['diversity'].append(diversity)
         
         # Generation log
-        if generation % 5 == 0 or generation == config.generations - 1:
+        if generation % 10 == 0 or generation == config.generations - 1:
            print(f"Generation {generation}, Best Fitness: {best_fitness}")
         
        
@@ -1742,6 +1921,7 @@ problems = [
 
 #### Result Table
 
+
 | Problem | Population Size | Generations | Islands | Expression | Fitness (MSE) |
 |---------|----------------|-------------|---------|----------------------|---------------|
 | 0 | 10,000 | 500 | 5 | `x[0] + (-2.8636943484015354 * cos(x[1] - -1.583968308262229)) * exp(-3.2082386888331254) + sin(x[1]) * exp(-3.154932922313467) + sin(x[1] + sqrt(tan(3.141592653589793)) * (3.141592653589793 / exp(-3.2082386888331254))) * exp(-3.154932922313467) - sqrt(sqrt(tan(3.141592653589793)) * (-3.154932922313467 / 0.2607832440731248) / 0.2532699192266387 * (x[1] + (x[1] - -1.0329760905609568) - -1.1123733897283157) * (sin(sin(x[1])) - -1.0439752897500634 + cos(-1.9944929251132986 * (x[1] - 3.1410124598253333))))` | 2.633315e-10 |
@@ -1750,10 +1930,6 @@ problems = [
 | 3 | 10,000 | 500 | 10 | `(1.0 + 1.0 + x[0]² + 1.0 + x[0]/x[0] + x[0]²) - (x[1] - x[0] + x[0]) - ((x[0] + x[2] - x[1]) * -1.0) - (x[1] * x[2]/x[1] - x[0]) - x[2]/((x[0] + 1.0 - x[0] + x[0] + 1.0 - x[0]) * (x[2] - -1.0 - x[2])) + x[2] - x[1]³` | 3.445432e-29 |
 | 4 | 10,000 | 500 | 5 | `cos(exp(-8.23509920982603 - cos(x[0] + x[1]) * x[0]) + x[1] + tan(3.141592653589793) + tan(3.141592653589793) + tan(3.141592653589793) - tan(exp(-10.613659135997567))) + sqrt(-10.822240096384276 + x[0] * exp(-0.9405033382101015) + x[0] * cos(-0.9916749730176175) * exp(-0.9916749730176175)) + sin(7.871174350285515) * sqrt(7.871174350285515) * cos(exp(-7.795847756522948) - x[1]) + sqrt(-10.205488998391495) * cos(exp(-8.36973460432399) - x[1] - tan(3.141592653589793) + tan(3.141592653589793))` | 7.296206e-05 |
 | 5 | 10,000 | 500 | 5 | `(x[0] * x[0] * x[1] + x[0] * log(exp(x[1]) + x[1]) * 4.092327718778701) * sin(sin(3.141592653589793) * sqrt(log(exp(x[1]) + 3.0580787826247215 + x[1]))) * (exp(x[1] + x[1]) - (exp(6.5609367685064) - 5.939230066817374 * x[0] * exp(x[0])) / exp(cos(5.939230066817374 + x[1])) - exp(5.083623282487277) * ((5.547345449854117 * 6.5609367685064 + 4.9787556043961265 - exp(5.083623282487277) / (x[0] / 5.547345449854117)) / x[1]) - ((5.939230066817374 + 5.939230066817374) * 4.818438684907152 * 5.547345449854117 * exp(4.9787556043961265) - exp(5.083623282487277 + x[1]) - exp(x[1]) * exp(x[0]) + x[0] * x[0] * x[1] * x[0] * exp(3.0580787826247215 + x[1])) / 4.032984299426399)` | 2.511431e-21 |
-| 6 | 10,000 | 500 | 5 | `sqrt(sqrt(8.254213750314564)) * (x[1] + (-10.225547483951923 * 9.025417700203663 * 9.590571516689572 * 8.318079817950606 * x[0] * 8.254213750314564 * tan(3.141592653589793) - x[1] * tan(3.141592653589793) * -9.347525141879945 * 9.590571516689572 * -11.05365123789452 * 9.590571516689572) - (-10.225547483951923 * 8.254213750314564² * 6.944557806606948 * -9.892836400798545 * 8.254213750314564² * 6.944557806606948 * x[0] * 8.254213750314564 * tan(3.141592653589793) - -9.347525141879945 * 8.318079817950606 * tan(3.141592653589793) * -9.36898251373954 * 8.254213750314564 * x[1] * -9.570992156231187 * 8.254213750314564 * 6.944557806606948 * -9.36898251373954 * 8.254213750314564)) - (exp(-7.99007532984518) * 2.0257904697066818 * (x[0] * cos(1.0567228657700947) + x[1]) + x[0] - exp(-9.36898251373954 * 2.0257904697066818) * x[1] - x[1] * tan(3.141592653589793) * -9.347525141879945 * 8.318079817950606 * -10.225547483951923 * 9.590571516689572) / sqrt(2.074545847057164)` | 1.472670e-24 |
+| 6 | 10,000 | 500 | 5 | `sqrt(sqrt     (8.254213750314564)) * (x[1] + (-10.225547483951923 * 9.025417700203663 * 9.590571516689572 * 8.318079817950606 * x[0] * 8.254213750314564 * tan(3.141592653589793) - x[1] * tan(3.141592653589793) * -9.347525141879945 * 9.590571516689572 * -11.05365123789452 * 9.590571516689572) - (-10.225547483951923 * 8.254213750314564² * 6.944557806606948 * -9.892836400798545 * 8.254213750314564² * 6.944557806606948 * x[0] * 8.254213750314564 * tan(3.141592653589793) - -9.347525141879945 * 8.318079817950606 * tan(3.141592653589793) * -9.36898251373954 * 8.254213750314564 * x[1] * -9.570992156231187 * 8.254213750314564 * 6.944557806606948 * -9.36898251373954 * 8.254213750314564)) - (exp(-7.99007532984518) * 2.0257904697066818 * (x[0] * cos(1.0567228657700947) + x[1]) + x[0] - exp(-9.36898251373954 * 2.0257904697066818) * x[1] - x[1] * tan(3.141592653589793) * -9.347525141879945 * 8.318079817950606 * -10.225547483951923 * 9.590571516689572) / sqrt(2.074545847057164)` | 1.472670e-24 |
 | 7 | 10,000 | 500 | 10 | `(sqrt(x[1]) / ((x[1] - x[0]) / (x[1] / 384.8962882269058)) / ((-6.862665872131174 - x[1]) * 359.84784980813555) + x[1]) * log(tan(0.9724434591834495) / x[1] / (log(x[0]) * (x[1] - x[0]))) * (-332.6904684986283 - x[0] * x[1] - x[0] * x[1]) * ((-163.24116507533665 + x[1]) / 493.73440938907135) / (77.07105818030101 - x[0]) * x[0] * x[0] * (log(x[0] / x[1] / (x[1] - x[0] + 0.9724434591834495 / -261.97840724970973)) + 1.1430702439215117) * (43.26877293866266 / x[0]² / (x[1] * 223.57402074165518) + sqrt(x[1]) / ((sqrt(2.718281828459045) + x[1]) * (493.73440938907135 + x[1] * 245.95435231808204)) + x[1])` | 5.742911e+01 |
 | 8 | 10,000 | 1000 | 10 | `(x[5] * log(14171.661837288537) - exp(x[5]) * cos(x[5]) * exp(x[5] + x[5]) + exp(x[5] + x[3]) - (x[5] + 5.22424095200899 + 4.919255252102357) + exp(x[5] + 4.919255252102357) / exp(cos(x[5])) + (cos(x[5]) + x[5]) * log(15361.32198836566) - log(-5373.432650868888 * -20631.50274792795) * exp(x[5] + x[4]) + exp(x[5] - x[4]) * (x[4] - 4.671905536726776 + x[4] - 4.982397747782802) + x[5] + x[5] + exp(x[5] + x[3])) / exp(x[5]) + exp(x[5] + x[5] + 263.1009235265916 / (-4534.039441136765 - (x[5] + x[3]) * exp(x[5])))` | 2.902945e+04 |
-
-
-
-
